@@ -1,0 +1,8 @@
+[package]
+name = "list-management"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+currency_rs = "1.3.0"
+chrono = "0.4.38"
