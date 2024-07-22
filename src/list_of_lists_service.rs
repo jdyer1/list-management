@@ -1,4 +1,4 @@
-use crate::common::{ItemList, ItemListRollup, ListStorage, ListType, PagingRequest, SortRequest};
+use crate::common::{ItemList, ItemListRollup, ListStorage, ListType, LMContext, PagingRequest, SortRequest};
 
 struct ListSelector {
     limit_can_edit: bool,
@@ -15,13 +15,13 @@ struct ListResult {
 }
 
 
-pub fn retrieve_lists(lists: ListStorage,
+pub fn retrieve_lists(context: impl LMContext,
                       selector: ListSelector,
                       paging: PagingRequest,
                       sort: SortRequest,
                       return_attributes: bool,
                       return_rollups: bool) -> Vec<ListResult> {
-    lists.lists.into_iter().map(|il| ListResult {
+    context.list_storage().all_lists().into_iter().map(|il| ListResult {
         list: il,
         rollups: vec![],
     }).collect()
@@ -29,51 +29,65 @@ pub fn retrieve_lists(lists: ListStorage,
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use chrono::DateTime;
+
     use crate::common::*;
-    use chrono::{DateTime, FixedOffset};
+
+    use super::*;
 
     #[test]
     fn test_retrieve_all_lists() {
-        let l1 = ItemList {
-            id: 1,
-            attributes: vec![],
-            created: DateTime::parse_from_rfc3339("2024-07-19T00:00:00-00:00").unwrap(),
-            deleted: false,
-            folder: "default".to_string(),
-            items: vec![],
-            list_access: ListAccess::PUBLIC,
-            list_type: ListType::STANDARD,
-            modified: DateTime::parse_from_rfc3339("2024-07-19T00:00:00-00:00").unwrap(),
-            name: "List One".to_string(),
-        };
-        let l2 = ItemList {
-            id: 2,
-            attributes: vec![],
-            created: DateTime::parse_from_rfc3339("2024-07-20T00:00:00-00:00").unwrap(),
-            deleted: false,
-            folder: "default".to_string(),
-            items: vec![],
-            list_access: ListAccess::PRIVATE,
-            list_type: ListType::CART,
-            modified: DateTime::parse_from_rfc3339("2024-07-20T00:00:00-00:00").unwrap(),
-            name: "List Two".to_string(),
-        };
-        let l3 = ItemList {
-            id: 3,
-            attributes: vec![],
-            created: DateTime::parse_from_rfc3339("2024-07-21T00:00:00-00:00").unwrap(),
-            deleted: true,
-            folder: "default".to_string(),
-            items: vec![],
-            list_access: ListAccess::SHARED,
-            list_type: ListType::PROGRAM,
-            modified: DateTime::parse_from_rfc3339("2024-07-21T00:00:00-00:00").unwrap(),
-            name: "List Three".to_string(),
-        };
-        let storage = ListStorage {
-            lists: vec![l1, l2, l3],
-        };
+
+        struct LMC;
+        struct LS;
+
+        impl LMContext for LMC {
+            fn list_storage(&self) -> impl ListStorage {
+                return LS;
+            }
+        }
+
+        impl ListStorage for LS {
+            fn all_lists(&self) -> Vec<ItemList> {
+                let l1 = ItemList {
+                    id: 1,
+                    attributes: vec![],
+                    created: DateTime::parse_from_rfc3339("2024-07-19T00:00:00-00:00").unwrap(),
+                    deleted: false,
+                    folder: "default".to_string(),
+                    items: vec![],
+                    list_access: ListAccess::PUBLIC,
+                    list_type: ListType::STANDARD,
+                    modified: DateTime::parse_from_rfc3339("2024-07-19T00:00:00-00:00").unwrap(),
+                    name: "List One".to_string(),
+                };
+                let l2 = ItemList {
+                    id: 2,
+                    attributes: vec![],
+                    created: DateTime::parse_from_rfc3339("2024-07-20T00:00:00-00:00").unwrap(),
+                    deleted: false,
+                    folder: "default".to_string(),
+                    items: vec![],
+                    list_access: ListAccess::PRIVATE,
+                    list_type: ListType::CART,
+                    modified: DateTime::parse_from_rfc3339("2024-07-20T00:00:00-00:00").unwrap(),
+                    name: "List Two".to_string(),
+                };
+                let l3 = ItemList {
+                    id: 3,
+                    attributes: vec![],
+                    created: DateTime::parse_from_rfc3339("2024-07-21T00:00:00-00:00").unwrap(),
+                    deleted: true,
+                    folder: "default".to_string(),
+                    items: vec![],
+                    list_access: ListAccess::SHARED,
+                    list_type: ListType::PROGRAM,
+                    modified: DateTime::parse_from_rfc3339("2024-07-21T00:00:00-00:00").unwrap(),
+                    name: "List Three".to_string(),
+                };
+                vec![l1, l2, l3]
+            }
+        }
         let selector = ListSelector {
             limit_can_edit: false,
             limit_list_types: vec![],
@@ -86,11 +100,11 @@ mod tests {
             start: 0,
             rows: 10,
         };
-        let sort= SortRequest {
+        let sort = SortRequest {
             descending: false,
             key: SortKey::ID,
         };
-        let results  = retrieve_lists(storage, selector, paging, sort, true, true);
+        let results = retrieve_lists(LMC, selector, paging, sort, true, true);
         assert_eq!(3, results.len());
     }
 }

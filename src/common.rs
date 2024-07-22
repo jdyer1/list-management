@@ -47,14 +47,18 @@ pub struct ListItem {
 }
 
 
-pub struct ListStorage {
-    pub lists: Vec<ItemList>,
+pub trait ListStorage {
+    fn all_lists(&self) -> Vec<ItemList>;
 }
 
 pub enum ListType {
     CART,
     STANDARD,
     PROGRAM,
+}
+
+pub trait LMContext {
+    fn list_storage(&self) -> impl ListStorage;
 }
 
 pub struct PagingRequest {
