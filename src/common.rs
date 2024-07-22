@@ -79,6 +79,5 @@ pub enum SortKey {
 pub struct SortRequest {
     pub descending: bool,
     pub key: SortKey,
-    pub sort_missing_last: bool,
 }
 

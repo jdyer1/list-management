@@ -1,4 +1,4 @@
-use crate::common::{ItemList, ItemListRollup, ListStorage, ListType, LMContext, PagingRequest, SortRequest};
+use crate::common::{ItemList, ItemListRollup, ListStorage, ListType, LMContext, PagingRequest, SortKey, SortRequest};
 
 struct ListSelector {
     limit_can_edit: bool,
@@ -21,10 +21,20 @@ pub fn retrieve_lists(context: impl LMContext,
                       sort: SortRequest,
                       return_attributes: bool,
                       return_rollups: bool) -> Vec<ListResult> {
-    context.list_storage().all_lists().into_iter().map(|il| ListResult {
-        list: il,
-        rollups: vec![],
-    }).collect()
+    let mut a = context.list_storage().all_lists();
+    a.sort_by(|a, b| {
+        let (one, two) = if sort.descending { (b, a) } else { (a, b) };
+        match sort.key {
+            SortKey::ID => one.id.cmp(&two.id),
+            SortKey::NAME => one.name.cmp(&two.name),
+        }
+    });
+
+    a.into_iter()
+        .map(|il| ListResult {
+            list: il,
+            rollups: vec![],
+        }).collect()
 }
 
 #[cfg(test)]
@@ -37,8 +47,33 @@ mod tests {
 
     #[test]
     fn test_retrieve_all_lists() {
-        let results = retrieve_lists(context(), selector(), paging(0, 10), sort(SortKey::ID, false, false), true, true);
+        let sortReq = sort(SortKey::ID, false);
+        let results = retrieve_lists(context(), selector(), paging(0, 10), sortReq, true, true);
         assert_eq!(3, results.len());
+        assert_eq!(1, results[0].list.id);
+        assert_eq!(2, results[1].list.id);
+        assert_eq!(3, results[2].list.id);
+
+        let sortReq = sort(SortKey::NAME, false);
+        let results = retrieve_lists(context(), selector(), paging(0, 10), sortReq, true, true);
+        assert_eq!(3, results.len());
+        assert_eq!("A3", results[0].list.name);
+        assert_eq!("B1", results[1].list.name);
+        assert_eq!("C2", results[2].list.name);
+
+        let sortReq = sort(SortKey::ID, true);
+        let results = retrieve_lists(context(), selector(), paging(0, 10), sortReq, true, true);
+        assert_eq!(3, results.len());
+        assert_eq!(3, results[0].list.id);
+        assert_eq!(2, results[1].list.id);
+        assert_eq!(1, results[2].list.id);
+
+        let sortReq = sort(SortKey::NAME, true);
+        let results = retrieve_lists(context(), selector(), paging(0, 10), sortReq, true, true);
+        assert_eq!(3, results.len());
+        assert_eq!("C2", results[0].list.name);
+        assert_eq!("B1", results[1].list.name);
+        assert_eq!("A3", results[2].list.name);
     }
 
     fn item_list(id: u64, name: String, folder: String) -> ItemList {
@@ -69,9 +104,9 @@ mod tests {
         impl ListStorage for LS {
             fn all_lists(&self) -> Vec<ItemList> {
                 vec![
-                    item_list(1, "default".to_string(), "List One".to_string()),
-                    item_list(3, "default".to_string(), "List Three".to_string()),
-                    item_list(2, "default".to_string(), "List Two".to_string()),
+                    item_list(1, "B1".to_string(), "default".to_string()),
+                    item_list(3, "A3".to_string(), "default".to_string()),
+                    item_list(2, "C2".to_string(), "archive".to_string()),
                 ]
             }
         }
@@ -96,11 +131,10 @@ mod tests {
         }
     }
 
-    fn sort(key: SortKey, descending: bool, sort_missing_last: bool) -> SortRequest {
+    fn sort(key: SortKey, descending: bool) -> SortRequest {
         SortRequest {
             descending,
             key,
-            sort_missing_last,
         }
     }
 }
