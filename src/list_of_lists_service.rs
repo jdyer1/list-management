@@ -37,7 +37,26 @@ mod tests {
 
     #[test]
     fn test_retrieve_all_lists() {
+        let results = retrieve_lists(context(), selector(), paging(0, 10), sort(SortKey::ID, false, false), true, true);
+        assert_eq!(3, results.len());
+    }
 
+    fn item_list(id: u64, name: String, folder: String) -> ItemList {
+        ItemList {
+            id,
+            attributes: vec![],
+            created: DateTime::parse_from_rfc3339("2024-07-19T00:00:00-00:00").unwrap(),
+            deleted: false,
+            folder,
+            items: vec![],
+            list_access: ListAccess::PUBLIC,
+            list_type: ListType::STANDARD,
+            modified: DateTime::parse_from_rfc3339("2024-07-19T00:00:00-00:00").unwrap(),
+            name,
+        }
+    }
+
+    fn context() -> impl LMContext {
         struct LMC;
         struct LS;
 
@@ -49,62 +68,39 @@ mod tests {
 
         impl ListStorage for LS {
             fn all_lists(&self) -> Vec<ItemList> {
-                let l1 = ItemList {
-                    id: 1,
-                    attributes: vec![],
-                    created: DateTime::parse_from_rfc3339("2024-07-19T00:00:00-00:00").unwrap(),
-                    deleted: false,
-                    folder: "default".to_string(),
-                    items: vec![],
-                    list_access: ListAccess::PUBLIC,
-                    list_type: ListType::STANDARD,
-                    modified: DateTime::parse_from_rfc3339("2024-07-19T00:00:00-00:00").unwrap(),
-                    name: "List One".to_string(),
-                };
-                let l2 = ItemList {
-                    id: 2,
-                    attributes: vec![],
-                    created: DateTime::parse_from_rfc3339("2024-07-20T00:00:00-00:00").unwrap(),
-                    deleted: false,
-                    folder: "default".to_string(),
-                    items: vec![],
-                    list_access: ListAccess::PRIVATE,
-                    list_type: ListType::CART,
-                    modified: DateTime::parse_from_rfc3339("2024-07-20T00:00:00-00:00").unwrap(),
-                    name: "List Two".to_string(),
-                };
-                let l3 = ItemList {
-                    id: 3,
-                    attributes: vec![],
-                    created: DateTime::parse_from_rfc3339("2024-07-21T00:00:00-00:00").unwrap(),
-                    deleted: true,
-                    folder: "default".to_string(),
-                    items: vec![],
-                    list_access: ListAccess::SHARED,
-                    list_type: ListType::PROGRAM,
-                    modified: DateTime::parse_from_rfc3339("2024-07-21T00:00:00-00:00").unwrap(),
-                    name: "List Three".to_string(),
-                };
-                vec![l1, l2, l3]
+                vec![
+                    item_list(1, "default".to_string(), "List One".to_string()),
+                    item_list(3, "default".to_string(), "List Three".to_string()),
+                    item_list(2, "default".to_string(), "List Two".to_string()),
+                ]
             }
         }
-        let selector = ListSelector {
+        LMC
+    }
+
+    fn selector() -> ListSelector {
+        ListSelector {
             limit_can_edit: false,
             limit_list_types: vec![],
             limit_show_deleted: true,
             limit_show_not_deleted: true,
             limit_in_folders: vec![],
             limit_name_keywords: None,
-        };
-        let paging = PagingRequest {
-            start: 0,
-            rows: 10,
-        };
-        let sort = SortRequest {
-            descending: false,
-            key: SortKey::ID,
-        };
-        let results = retrieve_lists(LMC, selector, paging, sort, true, true);
-        assert_eq!(3, results.len());
+        }
+    }
+
+    fn paging(start: u64, rows: u64) -> PagingRequest {
+        PagingRequest {
+            start,
+            rows,
+        }
+    }
+
+    fn sort(key: SortKey, descending: bool, sort_missing_last: bool) -> SortRequest {
+        SortRequest {
+            descending,
+            key,
+            sort_missing_last,
+        }
     }
 }

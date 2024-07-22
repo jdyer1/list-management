@@ -62,8 +62,8 @@ pub trait LMContext {
 }
 
 pub struct PagingRequest {
-    pub start: i64,
-    pub rows: i64,
+    pub start: u64,
+    pub rows: u64,
 }
 
 pub struct Price {
@@ -79,5 +79,6 @@ pub enum SortKey {
 pub struct SortRequest {
     pub descending: bool,
     pub key: SortKey,
+    pub sort_missing_last: bool,
 }
 
