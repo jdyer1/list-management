@@ -26,9 +26,9 @@ pub struct ItemListRollup {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum ListAccess {
-    PRIVATE,
-    PUBLIC,
-    SHARED,
+    Private,
+    Public,
+    Shared,
 }
 
 #[derive(Clone, Debug)]
@@ -59,9 +59,9 @@ pub trait ListStorage {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum ListType {
-    PROGRAM,
-    STANDARD,
-    TRANSIENT,
+    Standard,
+    System,
+    Transient,
 
 }
 
@@ -83,11 +83,11 @@ pub struct Price {
 
 #[derive(Clone, Debug)]
 pub enum SortKey {
-    ATTRIBUTE(String),
-    CREATED_DATE,
-    ID,
-    MODIFIED_DATE,
-    NAME,
+    Attribute(String),
+    CreatedDate,
+    Id,
+    ModifiedDate,
+    Name,
 }
 
 #[derive(Clone, Debug)]
