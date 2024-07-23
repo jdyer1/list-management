@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use chrono::{DateTime, FixedOffset};
 use currency_rs::Currency;
 
@@ -5,7 +7,7 @@ use currency_rs::Currency;
 pub struct ItemList {
     pub id: u64,
     //
-    pub attributes: Vec<ListAttribute>,
+    pub attributes: HashMap<String, ListAttribute>,
     pub read_only: bool,
     pub created: DateTime<FixedOffset>,
     pub deleted: bool,
@@ -31,7 +33,7 @@ pub enum ListAccess {
     Shared,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum ListAttribute {
     Boolean(bool),
     DateTime(DateTime<FixedOffset>),
@@ -80,6 +82,14 @@ pub struct Price {
     pub amount: Currency,
     pub source: String,
 }
+
+impl PartialEq<Self> for Price {
+    fn eq(&self, other: &Self) -> bool {
+        &self.amount.value() == &other.amount.value()
+    }
+}
+
+
 
 #[derive(Clone, Debug)]
 pub enum SortKey {
