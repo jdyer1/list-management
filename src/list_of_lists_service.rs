@@ -16,7 +16,6 @@ pub struct ListResult {
     list: ItemList,
     rollups: Vec<ItemListRollup>,
 }
-
 pub fn retrieve_lists(context: impl LMContext,
                       selector: ListSelector,
                       paging: PagingRequest,
@@ -33,6 +32,55 @@ pub fn retrieve_lists(context: impl LMContext,
     if paging.rows == 0 || paging.start >= a.len() as u64 {
         return vec![];
     }
+    let a = sort_list_of_lists(a, sort);
+    let mut i: usize = 0;
+    let mut a1: Vec<ListResult> = Vec::new();
+    for item_list in a {
+        let mut include: bool = i >= start;
+        include = include && (selector.limit_show_not_deleted || item_list.deleted);
+        include = include && (selector.limit_show_deleted || !item_list.deleted);
+        include = include && (selector.limit_show_read_only || !item_list.read_only);
+        include = include && (selector.limit_list_access.is_empty() || selector.limit_list_access.contains(&item_list.list_access));
+        include = include && (selector.limit_list_types.is_empty() || selector.limit_list_types.contains(&item_list.list_type));
+        include = include && (selector.limit_in_folders.is_empty() || selector.limit_in_folders.contains(&item_list.folder));
+        if include && selector.limit_name_keywords.is_some() {
+            let name_tokens: Vec<String> = item_list.name.split_whitespace().map(|a| a.to_ascii_lowercase()).collect();
+            for kw in selector.limit_name_keywords.as_ref().unwrap().split_whitespace().map(|a| a.to_ascii_lowercase()) {
+                let mut found: bool = false;
+                if kw.len() > 1 && kw.ends_with("*") {
+                    let mut kw_no_star = kw;
+                    kw_no_star.pop();
+                    for name_token in &name_tokens {
+                        if name_token.starts_with(&kw_no_star) {
+                            found = true;
+                            break;
+                        }
+                    }
+                } else {
+                    found = name_tokens.contains(&kw);
+                }
+                if !found {
+                    include = false;
+                    break;
+                }
+            }
+        }
+
+        if include {
+            a1.push(ListResult {
+                list: item_list,
+                rollups: vec![],
+            });
+        }
+        i = i + 1;
+        if i == end {
+            break;
+        }
+    }
+    return a1;
+}
+
+fn sort_list_of_lists(mut a: Vec<ItemList>, sort: SortRequest) -> Vec<ItemList> {
     a.sort_by(|a, b| {
         let (one, two) = if sort.descending { (b, a) } else { (a, b) };
         match &sort.key {
@@ -95,51 +143,7 @@ pub fn retrieve_lists(context: impl LMContext,
             SortKey::Name => one.name.cmp(&two.name),
         }
     });
-    let mut i: usize = 0;
-    let mut a1: Vec<ListResult> = Vec::new();
-    for item_list in a {
-        let mut include: bool = i >= start;
-        include = include && (selector.limit_show_not_deleted || item_list.deleted);
-        include = include && (selector.limit_show_deleted || !item_list.deleted);
-        include = include && (selector.limit_show_read_only || !item_list.read_only);
-        include = include && (selector.limit_list_access.is_empty() || selector.limit_list_access.contains(&item_list.list_access));
-        include = include && (selector.limit_list_types.is_empty() || selector.limit_list_types.contains(&item_list.list_type));
-        include = include && (selector.limit_in_folders.is_empty() || selector.limit_in_folders.contains(&item_list.folder));
-        if include && selector.limit_name_keywords.is_some() {
-            let name_tokens: Vec<String> = item_list.name.split_whitespace().map(|a| a.to_ascii_lowercase()).collect();
-            for kw in selector.limit_name_keywords.as_ref().unwrap().split_whitespace().map(|a| a.to_ascii_lowercase()) {
-                let mut found: bool = false;
-                if kw.len() > 1 && kw.ends_with("*") {
-                    let mut kw_no_star = kw;
-                    kw_no_star.pop();
-                    for name_token in &name_tokens {
-                        if name_token.starts_with(&kw_no_star) {
-                            found = true;
-                            break;
-                        }
-                    }
-                } else {
-                    found = name_tokens.contains(&kw);
-                }
-                if !found {
-                    include = false;
-                    break;
-                }
-            }
-        }
-
-        if include {
-            a1.push(ListResult {
-                list: item_list,
-                rollups: vec![],
-            });
-        }
-        i = i + 1;
-        if i == end {
-            break;
-        }
-    }
-    a1
+    return a;
 }
 
 #[cfg(test)]
@@ -449,27 +453,27 @@ mod tests {
     fn item_list(id: u64, name: String, folder: String, deleted: bool, read_only: bool,
                  list_access: ListAccess, list_type: ListType, created: DateTime<FixedOffset>,
                  modified: DateTime<FixedOffset>, price: String) -> ItemList {
-        let mut attrs: HashMap<String, ListAttribute> = HashMap::new();
-        attrs.insert("my boolean".to_string(), ListAttribute::Boolean(deleted));
-        attrs.insert("my date".to_string(), ListAttribute::DateTime(created));
-        attrs.insert("my float".to_string(), ListAttribute::Float(id as f64 * -0.1f64)); // ex: 1 becomes -1.1
-        attrs.insert("my integer".to_string(), ListAttribute::Integer(id as i64));
-        attrs.insert("my price".to_string(), ListAttribute::Price(Price { //ex: 1 becomes 1.21
+        let mut attributes: HashMap<String, ListAttribute> = HashMap::new();
+        attributes.insert("my boolean".to_string(), ListAttribute::Boolean(deleted));
+        attributes.insert("my date".to_string(), ListAttribute::DateTime(created));
+        attributes.insert("my float".to_string(), ListAttribute::Float(id as f64 * -0.1f64)); // ex: 1 becomes -1.1
+        attributes.insert("my integer".to_string(), ListAttribute::Integer(id as i64));
+        attributes.insert("my price".to_string(), ListAttribute::Price(Price { //ex: 1 becomes 1.21
             amount: Currency::new_string(&price, None).unwrap(),
             source: "a-source".to_string(),
         }));
-        attrs.insert("my text".to_string(), ListAttribute::Text(folder.clone() + " " + &name));
+        attributes.insert("my text".to_string(), ListAttribute::Text(folder.clone() + " " + &name));
         ItemList {
             id,
-            attributes: attrs,
+            attributes,
             read_only,
-            created: created,
+            created,
             deleted,
             folder,
             items: vec![],
-            list_access: list_access,
-            list_type: list_type,
-            modified: modified,
+            list_access,
+            list_type,
+            modified,
             name,
         }
     }
