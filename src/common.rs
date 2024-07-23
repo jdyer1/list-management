@@ -24,7 +24,7 @@ pub struct ItemListRollup {
     pub total_amount: Price,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum ListAccess {
     PRIVATE,
     PUBLIC,
@@ -57,11 +57,12 @@ pub trait ListStorage {
     fn all_lists(&self) -> Vec<ItemList>;
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum ListType {
-    CART,
-    STANDARD,
     PROGRAM,
+    STANDARD,
+    TRANSIENT,
+
 }
 
 pub trait LMContext {
@@ -82,7 +83,10 @@ pub struct Price {
 
 #[derive(Clone, Debug)]
 pub enum SortKey {
+    ATTRIBUTE(String),
+    CREATED_DATE,
     ID,
+    MODIFIED_DATE,
     NAME,
 }
 
