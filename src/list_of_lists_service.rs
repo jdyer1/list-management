@@ -1,6 +1,11 @@
 use std::cmp::Ordering;
+use std::collections::HashMap;
 
-use crate::common::{ItemList, ItemListRollup, ListAccess, ListAttribute, ListStorage, ListType, LMContext, PagingRequest, SortKey, SortRequest};
+use chrono::FixedOffset;
+use currency_rs::Currency;
+
+use crate::common::{ATTRIBUTE_QUANTITY, ItemList, ItemListRollup, ListAccess, ListAttribute, ListItem, ListStorage, ListType, LMContext, PagingRequest, Price, SortKey, SortRequest};
+use crate::common::ListAttribute::DateTime;
 
 pub struct ListSelector {
     limit_show_read_only: bool,
@@ -14,8 +19,9 @@ pub struct ListSelector {
 
 pub struct ListResult {
     list: ItemList,
-    rollups: Vec<ItemListRollup>,
+    rollups: HashMap<String, ItemListRollup>,
 }
+
 pub fn retrieve_lists(context: impl LMContext,
                       selector: ListSelector,
                       paging: PagingRequest,
@@ -35,7 +41,7 @@ pub fn retrieve_lists(context: impl LMContext,
     let a = sort_list_of_lists(a, sort);
     let mut i: usize = 0;
     let mut a1: Vec<ListResult> = Vec::new();
-    for item_list in a {
+    for mut item_list in a {
         let mut include: bool = i >= start;
         include = include && (selector.limit_show_not_deleted || item_list.deleted);
         include = include && (selector.limit_show_deleted || !item_list.deleted);
@@ -67,9 +73,13 @@ pub fn retrieve_lists(context: impl LMContext,
         }
 
         if include {
+            if !return_attributes {
+                item_list.attributes = HashMap::with_capacity(0);
+            }
+            let rollups: HashMap<String, ItemListRollup> = compute_rollup_values(return_rollups, &item_list.items);
             a1.push(ListResult {
                 list: item_list,
-                rollups: vec![],
+                rollups,
             });
         }
         i = i + 1;
@@ -97,15 +107,15 @@ fn sort_list_of_lists(mut a: Vec<ItemList>, sort: SortRequest) -> Vec<ItemList> 
                                 ordering = Some(v1.cmp(v2));
                             }
                         }
-                        ListAttribute::DateTime(v1) => {
-                            if let ListAttribute::DateTime(v2) = two_attribute_value {
+                        DateTime(v1) => {
+                            if let DateTime(v2) = two_attribute_value {
                                 ordering = Some(v1.cmp(v2));
                             }
                         }
                         ListAttribute::Float(v1) => {
                             if let ListAttribute::Float(v2) = two_attribute_value {
                                 if v1.min(*v2) == *v1 {
-                                    return Ordering::Less
+                                    return Ordering::Less;
                                 }
                                 return Ordering::Greater;
                             }
@@ -120,7 +130,7 @@ fn sort_list_of_lists(mut a: Vec<ItemList>, sort: SortRequest) -> Vec<ItemList> 
                                 let value1 = v1.amount.value();
                                 let value2 = v2.amount.value();
                                 if value1.min(value2) == value1 {
-                                    return Ordering::Less
+                                    return Ordering::Less;
                                 }
                                 return Ordering::Greater;
                             }
@@ -146,6 +156,51 @@ fn sort_list_of_lists(mut a: Vec<ItemList>, sort: SortRequest) -> Vec<ItemList> 
     return a;
 }
 
+fn compute_rollup_values(return_rollups: bool, items: &Vec<ListItem>) -> HashMap<String, ItemListRollup> {
+    if return_rollups {
+        let mut rollups: HashMap<String, ItemListRollup> = HashMap::new();
+        for item in items {
+            let qty_o = item.attributes.get(ATTRIBUTE_QUANTITY);
+            let mut qty: u64 = 0;
+            if qty_o.is_some() {
+                if let ListAttribute::Integer(qty1) = qty_o.unwrap() {
+                    qty = *qty1 as u64;
+                }
+            }
+            for (k, v) in &item.attributes {
+                if let ListAttribute::Price(price) = v {
+                    let mut ilr_price = price.clone();
+                    ilr_price.amount = ilr_price.amount * qty as f64;
+
+                    let ilr_o = rollups.get(k);
+                    if ilr_o.is_none() {
+                        let ilr = ItemListRollup {
+                            total_lines: 1,
+                            total_units: qty,
+                            total_amount: ilr_price,
+                        };
+                        rollups.insert(k.clone(), ilr);
+                    } else {
+                        let ilr = ilr_o.unwrap();
+                        let mut price1 = ilr.total_amount.clone();
+                        let currency1 = price1.amount.add(ilr_price.amount.value());
+                        price1.amount = currency1;
+
+                        let ilr1 = ItemListRollup {
+                            total_lines: ilr.total_lines + 1,
+                            total_units: ilr.total_units + qty,
+                            total_amount: price1,
+                        };
+                        rollups.insert(k.clone(), ilr1);
+                    }
+                }
+            }
+        }
+        return rollups;
+    }
+    return HashMap::with_capacity(0);
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
@@ -160,11 +215,62 @@ mod tests {
     #[test]
     fn test_retrieve_all_lists_by_id() {
         let sort_request = sort(SortKey::Id, false);
+        let results = retrieve_lists(context(item_lists()), selector(), paging(0, 10), sort_request, false, false);
+        assert_eq!(3, results.len());
+        assert_eq!(1, results[0].list.id);
+        assert_eq!(2, results[1].list.id);
+        assert_eq!(3, results[2].list.id);
+        assert!(results[0].list.attributes.is_empty());
+        assert!(results[1].list.attributes.is_empty());
+        assert!(results[2].list.attributes.is_empty());
+        assert!(results[0].rollups.is_empty());
+        assert!(results[1].rollups.is_empty());
+        assert!(results[2].rollups.is_empty());
+    }
+
+    #[test]
+    fn test_retrieve_all_lists_by_id_with_attributes_and_rollups() {
+        let sort_request = sort(SortKey::Id, false);
         let results = retrieve_lists(context(item_lists()), selector(), paging(0, 10), sort_request, true, true);
         assert_eq!(3, results.len());
         assert_eq!(1, results[0].list.id);
         assert_eq!(2, results[1].list.id);
         assert_eq!(3, results[2].list.id);
+        assert!(!results[0].list.attributes.is_empty());
+        assert!(!results[1].list.attributes.is_empty());
+        assert!(!results[2].list.attributes.is_empty());
+        let list_0_rollups = results[0].rollups.clone();
+        let list_1_rollups = results[1].rollups.clone();
+        let list_2_rollups = results[2].rollups.clone();
+        assert_eq!(2, list_0_rollups.len());
+
+        let l0r_xyz = list_0_rollups.get("xyz").unwrap();
+        assert_eq!(3, l0r_xyz.total_lines);
+        assert_eq!(6, l0r_xyz.total_units);
+        assert_eq!("xyz-source", l0r_xyz.total_amount.source);
+        assert_eq!(19.98, l0r_xyz.total_amount.amount.value());
+
+        let l0r_qwe = list_0_rollups.get("qwe").unwrap();
+        assert_eq!(2, l0r_qwe.total_lines);
+        assert_eq!(4, l0r_qwe.total_units);
+        assert_eq!("qwe-source", l0r_qwe.total_amount.source);
+        assert_eq!(9.36, l0r_qwe.total_amount.amount.value());
+
+        assert_eq!(2, list_1_rollups.len());
+
+        let l1r_xyz = list_1_rollups.get("xyz").unwrap();
+        assert_eq!(3, l1r_xyz.total_lines);
+        assert_eq!(6, l1r_xyz.total_units);
+        assert_eq!("xyz-source", l1r_xyz.total_amount.source);
+        assert_eq!(6.66, l1r_xyz.total_amount.amount.value());
+
+        let l1r_qwe = list_1_rollups.get("qwe").unwrap();
+        assert_eq!(2, l1r_qwe.total_lines);
+        assert_eq!(4, l1r_qwe.total_units);
+        assert_eq!("qwe-source", l1r_qwe.total_amount.source);
+        assert_eq!(9.36, l1r_qwe.total_amount.amount.value());
+
+        assert_eq!(2, list_2_rollups.len());
     }
 
     #[test]
@@ -463,6 +569,46 @@ mod tests {
             source: "a-source".to_string(),
         }));
         attributes.insert("my text".to_string(), ListAttribute::Text(folder.clone() + " " + &name));
+
+        let mut list_item_attributes1: HashMap<String, ListAttribute> = HashMap::new();
+        list_item_attributes1.insert(ATTRIBUTE_QUANTITY.to_string(), ListAttribute::Integer(2));
+        list_item_attributes1.insert("xyz".to_string(), ListAttribute::Price(Price {
+            amount: Currency::new_string(&price, None).unwrap(),
+            source: "xyz-source".to_string(),
+        }));
+        let mut list_item_attributes2: HashMap<String, ListAttribute> = list_item_attributes1.clone();
+        list_item_attributes2.insert("qwe".to_string(), ListAttribute::Price(Price {
+            amount: Currency::new_string("2.34", None).unwrap(),
+            source: "qwe-source".to_string(),
+        }));
+
+        let i1 = ListItem {
+            id: 100 + id,
+            attributes: list_item_attributes1.clone(),
+            created,
+            modified,
+            name: name.clone() + " item one",
+            source: "a-source".to_string(),
+        };
+        let i2 = ListItem {
+            id: 200 + id,
+            attributes: list_item_attributes2.clone(),
+            created,
+            modified,
+            name: name.clone() + " item two",
+            source: "a-source".to_string(),
+        };
+        let i3 = ListItem {
+            id: 300 + id,
+            attributes: list_item_attributes2.clone(),
+            created,
+            modified,
+            name: name.clone() + " item three",
+            source: "a-source".to_string(),
+        };
+        let mut items: Vec<ListItem> = vec![i1, i2, i3];
+
+
         ItemList {
             id,
             attributes,
@@ -470,7 +616,7 @@ mod tests {
             created,
             deleted,
             folder,
-            items: vec![],
+            items,
             list_access,
             list_type,
             modified,

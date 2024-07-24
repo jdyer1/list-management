@@ -1,7 +1,10 @@
 use std::collections::HashMap;
+use std::string::ToString;
 
 use chrono::{DateTime, FixedOffset};
 use currency_rs::Currency;
+
+pub static ATTRIBUTE_QUANTITY: &str = "quantity";
 
 #[derive(Clone, Debug)]
 pub struct ItemList {
@@ -47,7 +50,7 @@ pub enum ListAttribute {
 pub struct ListItem {
     pub id: u64,
     //
-    pub attributes: Vec<ListAttribute>,
+    pub attributes: HashMap<String, ListAttribute>,
     pub created: DateTime<FixedOffset>,
     pub modified: DateTime<FixedOffset>,
     pub name: String,
@@ -88,7 +91,6 @@ impl PartialEq<Self> for Price {
         &self.amount.value() == &other.amount.value()
     }
 }
-
 
 
 #[derive(Clone, Debug)]
