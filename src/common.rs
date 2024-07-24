@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::string::ToString;
 
 use chrono::{DateTime, FixedOffset};
 use currency_rs::Currency;

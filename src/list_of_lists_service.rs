@@ -1,25 +1,23 @@
 use std::cmp::Ordering;
 use std::collections::HashMap;
 
-use chrono::FixedOffset;
-use currency_rs::Currency;
 
-use crate::common::{ATTRIBUTE_QUANTITY, ItemList, ItemListRollup, ListAccess, ListAttribute, ListItem, ListStorage, ListType, LMContext, PagingRequest, Price, SortKey, SortRequest};
+use crate::common::{ATTRIBUTE_QUANTITY, ItemList, ItemListRollup, ListAccess, ListAttribute, ListItem, ListStorage, ListType, LMContext, PagingRequest, SortKey, SortRequest};
 use crate::common::ListAttribute::DateTime;
 
 pub struct ListSelector {
-    limit_show_read_only: bool,
-    limit_list_types: Vec<ListType>,
-    limit_list_access: Vec<ListAccess>,
-    limit_show_deleted: bool,
-    limit_show_not_deleted: bool,
-    limit_in_folders: Vec<String>,
-    limit_name_keywords: Option<String>,
+    pub limit_show_read_only: bool,
+    pub limit_list_types: Vec<ListType>,
+    pub limit_list_access: Vec<ListAccess>,
+    pub limit_show_deleted: bool,
+    pub limit_show_not_deleted: bool,
+    pub limit_in_folders: Vec<String>,
+    pub limit_name_keywords: Option<String>,
 }
 
 pub struct ListResult {
-    list: ItemList,
-    rollups: HashMap<String, ItemListRollup>,
+    pub list: ItemList,
+    pub rollups: HashMap<String, ItemListRollup>,
 }
 
 pub fn retrieve_lists(context: impl LMContext,
@@ -28,7 +26,7 @@ pub fn retrieve_lists(context: impl LMContext,
                       sort: SortRequest,
                       return_attributes: bool,
                       return_rollups: bool) -> Vec<ListResult> {
-    let mut a = context.list_storage().all_lists();
+    let a = context.list_storage().all_lists();
     let start = paging.start as usize;
     let mut end = (paging.start + paging.rows) as usize;
     if end > a.len() {
