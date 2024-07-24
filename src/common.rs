@@ -10,7 +10,6 @@ pub struct ItemList {
     pub id: u64,
     //
     pub attributes: HashMap<String, ListAttribute>,
-    pub read_only: bool,
     pub created: DateTime<FixedOffset>,
     pub deleted: bool,
     pub folder: String,
@@ -19,13 +18,14 @@ pub struct ItemList {
     pub list_type: ListType,
     pub modified: DateTime<FixedOffset>,
     pub name: String,
+    pub read_only: bool,
 }
 
 #[derive(Clone, Debug)]
 pub struct ItemListRollup {
+    pub total_amount: Price,
     pub total_lines: u64,
     pub total_units: u64,
-    pub total_amount: Price,
 }
 
 #[derive(Clone, Debug, PartialEq)]
