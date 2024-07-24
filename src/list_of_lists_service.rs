@@ -604,7 +604,7 @@ mod tests {
             name: name.clone() + " item three",
             source: "a-source".to_string(),
         };
-        let mut items: Vec<ListItem> = vec![i1, i2, i3];
+        let items: Vec<ListItem> = vec![i1, i2, i3];
 
 
         ItemList {
