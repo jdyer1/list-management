@@ -14,6 +14,7 @@ mod tests {
     use std::error::Error;
     use std::fs;
     use diesel::query_dsl::methods::OrderDsl;
+    use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
     use crate::models::{ItemListDb, ItemListDbInsert};
     use crate::schema::item_lists;
     use crate::schema::item_lists::id;
