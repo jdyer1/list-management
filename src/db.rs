@@ -40,7 +40,7 @@ mod tests {
     use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 
     use crate::models::{ItemListDb, ItemListDbInsert, ListItemDb, ListItemDbInsert};
-    use crate::schema::{item_list, item_list_attribute, list_item, list_item_attribute};
+    use crate::schema::{item_list, list_item};
 
     use super::*;
 
@@ -129,16 +129,14 @@ mod tests {
             source: &"My Source".to_string(),
         };
         diesel::insert_into(list_item::table).values(&list_item).execute(c).unwrap();
-        item_list::table
-            .select(ItemListDb::as_select()).order(item_list::id.desc())
+        list_item::table
+            .select(ListItemDb::as_select()).order(list_item::id.desc())
             .load(c).unwrap()[0].id
     }
 
     fn cleanup_db(c: &mut PooledConnection<ConnectionManager<SqliteConnection>>) {
         diesel::delete(item_list::table).execute(c).unwrap();
-        diesel::delete(item_list_attribute::table).execute(c).unwrap();
         diesel::delete(list_item::table).execute(c).unwrap();
-        diesel::delete(list_item_attribute::table).execute(c).unwrap();
     }
 
     const MIGRATIONS: EmbeddedMigrations = embed_migrations!();

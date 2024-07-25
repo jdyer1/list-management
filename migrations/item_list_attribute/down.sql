@@ -1,1 +1,0 @@
-DROP TABLE item_list_attribute;
