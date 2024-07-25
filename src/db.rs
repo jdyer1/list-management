@@ -36,7 +36,7 @@ mod tests {
     use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 
     use crate::models::{ItemListDb, ItemListDbInsert, ListItemDb, ListItemDbInsert};
-    use crate::schema::{item_lists, list_items};
+    use crate::schema::{item_list, list_item};
 
     use super::*;
 
@@ -51,19 +51,19 @@ mod tests {
             list_type: &"Standard".to_string(),
             name: &"Item List One".to_string(),
         };
-        diesel::insert_into(item_lists::table).values(&item_list).execute(c).unwrap();
+        diesel::insert_into(item_list::table).values(&item_list).execute(c).unwrap();
 
         let binding = "Item List Two".to_string();
         item_list.name = &binding;
-        diesel::insert_into(item_lists::table).values(&item_list).execute(c).unwrap();
+        diesel::insert_into(item_list::table).values(&item_list).execute(c).unwrap();
 
         let binding = "Item List Three".to_string();
         item_list.name = &binding;
-        diesel::insert_into(item_lists::table).values(&item_list).execute(c).unwrap();
+        diesel::insert_into(item_list::table).values(&item_list).execute(c).unwrap();
 
 
-        let results: Vec<ItemListDb> = item_lists::table
-            .select(ItemListDb::as_select()).order(item_lists::id.desc())
+        let results: Vec<ItemListDb> = item_list::table
+            .select(ItemListDb::as_select()).order(item_list::id.desc())
             .load(c).unwrap();
 
         assert_eq!(3, results.len());
@@ -75,9 +75,9 @@ mod tests {
         assert_eq!("Item List Two", results[1].name);
         assert_eq!("Item List One", results[2].name);
 
-        diesel::delete(item_lists::table.filter(item_lists::id.eq(2))).execute(c).unwrap();
-        let results: Vec<ItemListDb> = item_lists::table
-            .select(ItemListDb::as_select()).order(item_lists::id.desc())
+        diesel::delete(item_list::table.filter(item_list::id.eq(2))).execute(c).unwrap();
+        let results: Vec<ItemListDb> = item_list::table
+            .select(ItemListDb::as_select()).order(item_list::id.desc())
             .load(c).unwrap();
         assert_eq!(2, results.len());
         assert_eq!("Item List Three", results[0].name);
@@ -97,25 +97,25 @@ mod tests {
             list_type: &"Standard".to_string(),
             name: &"Item List One".to_string(),
         };
-        diesel::insert_into(item_lists::table).values(&item_list).execute(c).unwrap();
-        let item_list_id = item_lists::table
-            .select(ItemListDb::as_select()).order(item_lists::id.desc())
+        diesel::insert_into(item_list::table).values(&item_list).execute(c).unwrap();
+        let item_list_id = item_list::table
+            .select(ItemListDb::as_select()).order(item_list::id.desc())
             .load(c).unwrap()[0].id;
 
 
         let mut list_item = ListItemDbInsert {
-            item_lists_id: &item_list_id,
+            item_list_id: &item_list_id,
             name: &"List Item One".to_string(),
             source: &"My Source".to_string(),
         };
-        diesel::insert_into(list_items::table).values(&list_item).execute(c).unwrap();
+        diesel::insert_into(list_item::table).values(&list_item).execute(c).unwrap();
 
         let binding = "List Item Two".to_string();
         list_item.name = &binding;
-        diesel::insert_into(list_items::table).values(&list_item).execute(c).unwrap();
+        diesel::insert_into(list_item::table).values(&list_item).execute(c).unwrap();
 
-        let results: Vec<ListItemDb> = list_items::table
-            .select(ListItemDb::as_select()).order(list_items::id.desc())
+        let results: Vec<ListItemDb> = list_item::table
+            .select(ListItemDb::as_select()).order(list_item::id.desc())
             .load(c).unwrap();
 
         assert_eq!(2, results.len());
@@ -127,8 +127,8 @@ mod tests {
     }
 
     fn cleanup_db(c: &mut PooledConnection<ConnectionManager<SqliteConnection>>) {
-        diesel::delete(list_items::table).execute(c).unwrap();
-        diesel::delete(item_lists::table).execute(c).unwrap();
+        diesel::delete(list_item::table).execute(c).unwrap();
+        diesel::delete(item_list::table).execute(c).unwrap();
     }
 
     const MIGRATIONS: EmbeddedMigrations = embed_migrations!();

@@ -1,4 +1,4 @@
-CREATE TABLE `item_lists`
+CREATE TABLE `item_list`
 (
     `id`        INTEGER           NOT NULL PRIMARY KEY,
     `created`   TIMESTAMPTZSQLITE NOT NULL DEFAULT CURRENT_TIMESTAMP,

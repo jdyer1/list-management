@@ -1,5 +1,5 @@
 diesel::table! {
-    item_lists (id) {
+    item_list (id) {
         id -> Integer,
         created -> TimestamptzSqlite,
         deleted -> Bool,
@@ -12,9 +12,9 @@ diesel::table! {
 }
 
 diesel::table! {
-    list_items (id) {
+    list_item (id) {
         id -> Integer,
-        item_lists_id -> Integer,
+        item_list_id -> Integer,
         created -> TimestamptzSqlite,
         name -> Text,
         modified -> TimestamptzSqlite,

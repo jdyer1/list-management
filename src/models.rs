@@ -4,7 +4,7 @@ use diesel::sqlite::Sqlite;
 
 #[derive(Queryable, Selectable)]
 #[diesel(check_for_backend(Sqlite))]
-#[diesel(table_name = crate::schema::item_lists)]
+#[diesel(table_name = crate::schema::item_list)]
 pub struct ItemListDb {
     pub id: i32,
     pub created: DateTime<Utc>,
@@ -17,7 +17,7 @@ pub struct ItemListDb {
 }
 
 #[derive(Insertable)]
-#[diesel(table_name = crate::schema::item_lists)]
+#[diesel(table_name = crate::schema::item_list)]
 pub struct ItemListDbInsert<'a> {
     pub deleted: &'a bool,
     pub folder: &'a String,
@@ -28,10 +28,10 @@ pub struct ItemListDbInsert<'a> {
 
 #[derive(Queryable, Selectable)]
 #[diesel(check_for_backend(Sqlite))]
-#[diesel(table_name = crate::schema::list_items)]
+#[diesel(table_name = crate::schema::list_item)]
 pub struct ListItemDb {
     pub id: i32,
-    pub item_lists_id: i32,
+    pub item_list_id: i32,
     pub created: DateTime<Utc>,
     pub name: String,
     pub modified: DateTime<Utc>,
@@ -39,9 +39,9 @@ pub struct ListItemDb {
 }
 
 #[derive(Insertable)]
-#[diesel(table_name = crate::schema::list_items)]
+#[diesel(table_name = crate::schema::list_item)]
 pub struct ListItemDbInsert<'a> {
-    pub item_lists_id: &'a i32,
+    pub item_list_id: &'a i32,
     pub name: &'a String,
     pub source: &'a String,
 }
