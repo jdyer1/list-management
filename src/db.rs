@@ -1,17 +1,38 @@
 use std::env;
 
 use diesel::prelude::*;
-use diesel::r2d2::ConnectionManager;
+use diesel::r2d2::{ConnectionManager, PooledConnection};
 use diesel::r2d2::Pool;
 use dotenvy::dotenv;
+use lazy_static::lazy_static;
+
+lazy_static! {
+    static ref POOL: Pool<ConnectionManager<SqliteConnection>> = {
+        get_connection_pool()
+    };
+}
 
 
+pub fn connection() -> PooledConnection<ConnectionManager<SqliteConnection>> {
+    POOL.get().unwrap()
+}
+
+fn get_connection_pool() -> Pool<ConnectionManager<SqliteConnection>> {
+    dotenv().ok();
+    let url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let manager = ConnectionManager::<SqliteConnection>::new(url);
+    Pool::builder()
+        .max_size(1)
+        .test_on_check_out(true)
+        .build(manager)
+        .expect("Could not build connection pool")
+}
 
 #[cfg(test)]
 mod tests {
     use std::fs;
-    use diesel::r2d2::PooledConnection;
 
+    use diesel::r2d2::PooledConnection;
     use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 
     use crate::models::{ItemListDb, ItemListDbInsert, ListItemDb, ListItemDbInsert};
@@ -62,13 +83,14 @@ mod tests {
         assert_eq!("Item List Three", results[0].name);
         assert_eq!("Item List One", results[1].name);
 
+        cleanup_db(c);
     }
-/*
+
     #[test]
     fn test_list_items() {
         let c = &mut setup_db();
 
-        let mut item_list = ItemListDbInsert {
+        let item_list = ItemListDbInsert {
             deleted: &false,
             folder: &"default".to_string(),
             access: &"Public".to_string(),
@@ -88,7 +110,7 @@ mod tests {
         };
         diesel::insert_into(list_items::table).values(&list_item).execute(c).unwrap();
 
-        let binding= "List Item Two".to_string();
+        let binding = "List Item Two".to_string();
         list_item.name = &binding;
         diesel::insert_into(list_items::table).values(&list_item).execute(c).unwrap();
 
@@ -98,10 +120,16 @@ mod tests {
 
         assert_eq!(2, results.len());
         assert_eq!("My Source", results[0].source);
-        assert_eq!("Item List Two", results[0].name);
-        assert_eq!("Item List One", results[1].name);
+        assert_eq!("List Item Two", results[0].name);
+        assert_eq!("List Item One", results[1].name);
+
+        cleanup_db(c);
     }
-*/
+
+    fn cleanup_db(c: &mut PooledConnection<ConnectionManager<SqliteConnection>>) {
+        diesel::delete(list_items::table).execute(c).unwrap();
+        diesel::delete(item_lists::table).execute(c).unwrap();
+    }
 
     const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
 
@@ -110,20 +138,5 @@ mod tests {
         let mut c = connection();
         c.run_pending_migrations(MIGRATIONS).expect("Could not run migrations");
         return c;
-    }
-
-    fn get_connection_pool() -> Pool<ConnectionManager<SqliteConnection>> {
-        dotenv().ok();
-        let url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");;
-        let manager = ConnectionManager::<SqliteConnection>::new(url);
-        Pool::builder()
-            .test_on_check_out(true)
-            .build(manager)
-            .expect("Could not build connection pool")
-    }
-
-    pub fn connection() -> PooledConnection<ConnectionManager<SqliteConnection>> {
-        let pool: Pool<ConnectionManager<SqliteConnection>> = get_connection_pool();
-        pool.get().unwrap()
     }
 }
