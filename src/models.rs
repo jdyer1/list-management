@@ -1,4 +1,4 @@
-use chrono::{DateTime, FixedOffset, Utc};
+use chrono::{DateTime, Utc};
 use diesel::prelude::*;
 use diesel::sqlite::Sqlite;
 

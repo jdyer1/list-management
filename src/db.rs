@@ -1,7 +1,6 @@
 use std::env;
 
 use diesel::prelude::*;
-use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use dotenvy::dotenv;
 
 pub fn connection() -> SqliteConnection {
