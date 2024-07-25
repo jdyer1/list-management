@@ -11,13 +11,13 @@ pub fn connection() -> SqliteConnection {
 
 #[cfg(test)]
 mod tests {
-    use std::error::Error;
+    
     use std::fs;
-    use diesel::query_dsl::methods::OrderDsl;
+    
     use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
     use crate::models::{ItemListDb, ItemListDbInsert};
     use crate::schema::item_lists;
-    use crate::schema::item_lists::id;
+    
     use super::*;
     #[test]
     fn test_item_lists() {
@@ -30,15 +30,15 @@ mod tests {
             list_type: &"Standard".to_string(),
             name: &"Item List One".to_string(),
         };
-        diesel::insert_into(item_lists::table).values(&item_list).execute(c);
+        diesel::insert_into(item_lists::table).values(&item_list).execute(c).unwrap();
 
         let binding = "Item List Two".to_string();
         item_list.name = &binding;
-        diesel::insert_into(item_lists::table).values(&item_list).execute(c);
+        diesel::insert_into(item_lists::table).values(&item_list).execute(c).unwrap();
 
         let binding = "Item List Three".to_string();
         item_list.name = &binding;
-        diesel::insert_into(item_lists::table).values(&item_list).execute(c);
+        diesel::insert_into(item_lists::table).values(&item_list).execute(c).unwrap();
 
 
         let results: Vec<ItemListDb> = item_lists::table
@@ -56,7 +56,6 @@ mod tests {
     }
 
     const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
-    type DB = diesel::sqlite::Sqlite;
 
     fn setup_db() -> SqliteConnection {
         fs::remove_file("./sqlite.db").unwrap_or_default();
