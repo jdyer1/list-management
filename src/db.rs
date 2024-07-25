@@ -11,14 +11,15 @@ pub fn connection() -> SqliteConnection {
 
 #[cfg(test)]
 mod tests {
-    
     use std::fs;
-    
+
     use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+
     use crate::models::{ItemListDb, ItemListDbInsert};
     use crate::schema::item_lists;
-    
+
     use super::*;
+
     #[test]
     fn test_item_lists() {
         let c = &mut setup_db();
@@ -42,7 +43,7 @@ mod tests {
 
 
         let results: Vec<ItemListDb> = item_lists::table
-            .select(ItemListDb::as_select())
+            .select(ItemListDb::as_select()).order(item_lists::id.desc())
             .load(c).unwrap();
 
         assert_eq!(3, results.len());
@@ -50,9 +51,17 @@ mod tests {
         assert_eq!("default", results[0].folder);
         assert_eq!("Public", results[0].access);
         assert_eq!("Standard", results[0].list_type);
-        assert_eq!("Item List One", results[0].name);
+        assert_eq!("Item List Three", results[0].name);
+        assert_eq!("Item List Two", results[1].name);
+        assert_eq!("Item List One", results[2].name);
 
-
+        diesel::delete(item_lists::table.filter(item_lists::id.eq(2))).execute(c).unwrap();
+        let results: Vec<ItemListDb> = item_lists::table
+            .select(ItemListDb::as_select()).order(item_lists::id.desc())
+            .load(c).unwrap();
+        assert_eq!(2, results.len());
+        assert_eq!("Item List Three", results[0].name);
+        assert_eq!("Item List One", results[1].name);
     }
 
     const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
