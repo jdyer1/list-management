@@ -19,10 +19,14 @@ pub fn connection() -> PooledConnection<ConnectionManager<SqliteConnection>> {
 
 fn get_connection_pool() -> Pool<ConnectionManager<SqliteConnection>> {
     dotenv().ok();
+
     let url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let pool_size_str = env::var("DATABASE_POOL_SIZE").expect("DATABASE_POOL_SIZE must be set");
+    let pool_size :u32 = pool_size_str.parse().expect("DATABASE_POOL_SIZE must be a positive integer");
+    
     let manager = ConnectionManager::<SqliteConnection>::new(url);
     Pool::builder()
-        .max_size(1)
+        .max_size(pool_size)
         .test_on_check_out(true)
         .build(manager)
         .expect("Could not build connection pool")
