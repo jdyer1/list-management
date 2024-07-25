@@ -15,8 +15,8 @@ mod tests {
 
     use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 
-    use crate::models::{ItemListDb, ItemListDbInsert};
-    use crate::schema::item_lists;
+    use crate::models::{ItemListDb, ItemListDbInsert, ListItemDb, ListItemDbInsert};
+    use crate::schema::{item_lists, list_items};
 
     use super::*;
 
@@ -62,7 +62,47 @@ mod tests {
         assert_eq!(2, results.len());
         assert_eq!("Item List Three", results[0].name);
         assert_eq!("Item List One", results[1].name);
+        
     }
+/*
+    #[test]
+    fn test_list_items() {
+        let c = &mut setup_db();
+
+        let mut item_list = ItemListDbInsert {
+            deleted: &false,
+            folder: &"default".to_string(),
+            access: &"Public".to_string(),
+            list_type: &"Standard".to_string(),
+            name: &"Item List One".to_string(),
+        };
+        diesel::insert_into(item_lists::table).values(&item_list).execute(c).unwrap();
+        let item_list_id = item_lists::table
+            .select(ItemListDb::as_select()).order(item_lists::id.desc())
+            .load(c).unwrap()[0].id;
+
+
+        let mut list_item = ListItemDbInsert {
+            item_lists_id: &item_list_id,
+            name: &"List Item One".to_string(),
+            source: &"My Source".to_string(),
+        };
+        diesel::insert_into(list_items::table).values(&list_item).execute(c).unwrap();
+
+        let binding= "List Item Two".to_string();
+        list_item.name = &binding;
+        diesel::insert_into(list_items::table).values(&list_item).execute(c).unwrap();
+
+        let results: Vec<ListItemDb> = list_items::table
+            .select(ListItemDb::as_select()).order(list_items::id.desc())
+            .load(c).unwrap();
+
+        assert_eq!(2, results.len());
+        assert_eq!("My Source", results[0].source);
+        assert_eq!("Item List Two", results[0].name);
+        assert_eq!("Item List One", results[1].name);
+    }
+*/
 
     const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
 

@@ -26,3 +26,24 @@ pub struct ItemListDbInsert<'a> {
     pub name: &'a String,
 }
 
+#[derive(Queryable, Selectable)]
+#[diesel(check_for_backend(Sqlite))]
+#[diesel(table_name = crate::schema::list_items)]
+pub struct ListItemDb {
+    pub id: i32,
+    pub item_lists_id: i32,
+    pub created: DateTime<Utc>,
+    pub name: String,
+    pub modified: DateTime<Utc>,
+    pub source: String,
+}
+
+#[derive(Insertable)]
+#[diesel(table_name = crate::schema::list_items)]
+pub struct ListItemDbInsert<'a> {
+    pub item_lists_id: &'a i32,
+    pub name: &'a String,
+    pub source: &'a String,
+}
+
+
