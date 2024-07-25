@@ -1,17 +1,16 @@
 use std::env;
 
 use diesel::prelude::*;
+use diesel::r2d2::ConnectionManager;
+use diesel::r2d2::Pool;
 use dotenvy::dotenv;
 
-pub fn connection() -> SqliteConnection {
-    dotenv().ok();
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    SqliteConnection::establish(&database_url).unwrap()
-}
+
 
 #[cfg(test)]
 mod tests {
     use std::fs;
+    use diesel::r2d2::PooledConnection;
 
     use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 
@@ -62,7 +61,7 @@ mod tests {
         assert_eq!(2, results.len());
         assert_eq!("Item List Three", results[0].name);
         assert_eq!("Item List One", results[1].name);
-        
+
     }
 /*
     #[test]
@@ -106,10 +105,25 @@ mod tests {
 
     const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
 
-    fn setup_db() -> SqliteConnection {
+    fn setup_db() -> PooledConnection<ConnectionManager<SqliteConnection>> {
         fs::remove_file("./sqlite.db").unwrap_or_default();
         let mut c = connection();
         c.run_pending_migrations(MIGRATIONS).expect("Could not run migrations");
         return c;
+    }
+
+    fn get_connection_pool() -> Pool<ConnectionManager<SqliteConnection>> {
+        dotenv().ok();
+        let url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");;
+        let manager = ConnectionManager::<SqliteConnection>::new(url);
+        Pool::builder()
+            .test_on_check_out(true)
+            .build(manager)
+            .expect("Could not build connection pool")
+    }
+
+    pub fn connection() -> PooledConnection<ConnectionManager<SqliteConnection>> {
+        let pool: Pool<ConnectionManager<SqliteConnection>> = get_connection_pool();
+        pool.get().unwrap()
     }
 }
