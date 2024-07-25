@@ -1,1 +1,1 @@
-DROP TABLE item_lists
+DROP TABLE item_lists;
