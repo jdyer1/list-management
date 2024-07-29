@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use chrono::{DateTime, FixedOffset};
 use currency_rs::Currency;
+use strum_macros::EnumString;
+
 
 pub static ATTRIBUTE_QUANTITY: &str = "quantity";
 
@@ -28,14 +30,14 @@ pub struct ItemListRollup {
     pub total_units: u64,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, EnumString, PartialEq)]
 pub enum ListAccess {
     Private,
     Public,
     Shared,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, EnumString, PartialEq)]
 pub enum ListAttribute {
     Boolean(bool),
     DateTime(DateTime<FixedOffset>),
@@ -61,7 +63,7 @@ pub trait ListStorage {
     fn all_lists(&self) -> Vec<ItemList>;
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, EnumString, PartialEq)]
 pub enum ListType {
     Standard,
     System,
@@ -85,6 +87,15 @@ pub struct Price {
     pub source: String,
 }
 
+impl Default for Price {
+    fn default() -> Self {
+        Price {
+            amount: Currency::new_string("0.00", None).unwrap(),
+            source: "".to_string(),
+        }
+    }
+}
+
 impl PartialEq<Self> for Price {
     fn eq(&self, other: &Self) -> bool {
         &self.amount.value() == &other.amount.value()
@@ -92,7 +103,7 @@ impl PartialEq<Self> for Price {
 }
 
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, EnumString)]
 pub enum SortKey {
     Attribute(String),
     CreatedDate,

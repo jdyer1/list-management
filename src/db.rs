@@ -33,10 +33,8 @@ fn get_connection_pool() -> Pool<ConnectionManager<SqliteConnection>> {
 }
 
 #[cfg(test)]
-mod tests {
-    use std::fs;
+pub(crate) mod tests {
     use chrono::DateTime;
-
     use diesel::r2d2::PooledConnection;
     use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 
@@ -104,10 +102,10 @@ mod tests {
         let list_item_id_1 = insert_list_item(c, item_list_id_1, "List Item One".to_string());
         let july_19_2024 = DateTime::parse_from_rfc3339("2024-07-19T00:00:00-00:00").unwrap();
         diesel::insert_into(list_item_attribute::table)
-             .values((list_item_attribute::list_item_id.eq(&list_item_id_1), list_item_attribute::name.eq("My Boolean"), list_item_attribute::bool_val.eq(true)))
-             .execute(c).expect("Could not insert boolean");
+            .values((list_item_attribute::list_item_id.eq(&list_item_id_1), list_item_attribute::name.eq("My Boolean"), list_item_attribute::bool_val.eq(true)))
+            .execute(c).expect("Could not insert boolean");
         diesel::insert_into(list_item_attribute::table)
-            .values((list_item_attribute::list_item_id.eq(&list_item_id_1),list_item_attribute:: name.eq("My DateTime"), list_item_attribute::timestamp_val.eq(july_19_2024)))
+            .values((list_item_attribute::list_item_id.eq(&list_item_id_1), list_item_attribute::name.eq("My DateTime"), list_item_attribute::timestamp_val.eq(july_19_2024)))
             .execute(c).expect("Could not insert DateTime");
         diesel::insert_into(list_item_attribute::table)
             .values((list_item_attribute::list_item_id.eq(&list_item_id_1), list_item_attribute::name.eq("My Float"), list_item_attribute::float_val.eq(1.1f32)))
@@ -116,7 +114,7 @@ mod tests {
             .values((list_item_attribute::list_item_id.eq(&list_item_id_1), list_item_attribute::name.eq("My Integer"), list_item_attribute::integer_val.eq(123)))
             .execute(c).expect("Could not insert integer");
         diesel::insert_into(list_item_attribute::table)
-            .values((list_item_attribute::list_item_id.eq(&list_item_id_1),list_item_attribute:: name.eq("My Text"), list_item_attribute::text_val.eq("my text")))
+            .values((list_item_attribute::list_item_id.eq(&list_item_id_1), list_item_attribute::name.eq("My Text"), list_item_attribute::text_val.eq("my text")))
             .execute(c).expect("Could not insert text");
 
         let results: Vec<ListItemAttributeDb> = list_item_attribute::table
@@ -178,7 +176,7 @@ mod tests {
         assert!(results[4].bool_val.unwrap());
     }
 
-    fn insert_item_list(c: &mut PooledConnection<ConnectionManager<SqliteConnection>>, name1: String) -> i32 {
+    pub fn insert_item_list(c: &mut PooledConnection<ConnectionManager<SqliteConnection>>, name1: String) -> i32 {
         let item_list = ItemListDbInsert {
             deleted: &false,
             folder: &"default".to_string(),
@@ -192,7 +190,7 @@ mod tests {
             .load(c).unwrap()[0].id
     }
 
-    fn insert_list_item(c: &mut PooledConnection<ConnectionManager<SqliteConnection>>, item_list_id: i32, name1: String) -> i32 {
+    pub fn insert_list_item(c: &mut PooledConnection<ConnectionManager<SqliteConnection>>, item_list_id: i32, name1: String) -> i32 {
         let list_item = ListItemDbInsert {
             item_list_id: &item_list_id,
             name: &name1,
@@ -204,17 +202,16 @@ mod tests {
             .load(c).unwrap()[0].id
     }
 
-    fn cleanup_db(c: &mut PooledConnection<ConnectionManager<SqliteConnection>>) {
-        diesel::delete(item_list::table).execute(c).unwrap();
-        diesel::delete(item_list_attribute::table).execute(c).unwrap();
-        diesel::delete(list_item::table).execute(c).unwrap();
+    pub fn cleanup_db(c: &mut PooledConnection<ConnectionManager<SqliteConnection>>) {
         diesel::delete(list_item_attribute::table).execute(c).unwrap();
+        diesel::delete(list_item::table).execute(c).unwrap();
+        diesel::delete(item_list_attribute::table).execute(c).unwrap();
+        diesel::delete(item_list::table).execute(c).unwrap();
     }
 
-    const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
+    pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
 
-    fn setup_db() -> PooledConnection<ConnectionManager<SqliteConnection>> {
-        fs::remove_file("./sqlite.db").unwrap_or_default();
+    pub fn setup_db() -> PooledConnection<ConnectionManager<SqliteConnection>> {
         let mut c = connection();
         c.run_pending_migrations(MIGRATIONS).expect("Could not run migrations");
         cleanup_db(&mut c);
