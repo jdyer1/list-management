@@ -24,6 +24,8 @@ diesel::table! {
     }
 }
 
+diesel::joinable!(item_list_attribute -> item_list (item_list_id));
+
 diesel::table! {
     list_item (id) {
         id -> Integer,
@@ -34,6 +36,8 @@ diesel::table! {
         source -> Text,
     }
 }
+
+diesel::joinable!(list_item -> item_list (item_list_id));
 
 diesel::table! {
     list_item_attribute (id) {
@@ -47,4 +51,13 @@ diesel::table! {
         text_val -> Nullable<Text>,
     }
 }
+
+diesel::joinable!(list_item_attribute -> list_item (list_item_id));
+
+diesel::allow_tables_to_appear_in_same_query!(
+    item_list,
+    item_list_attribute,
+    list_item,
+    list_item_attribute,
+);
 
