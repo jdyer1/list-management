@@ -102,19 +102,19 @@ pub(crate) mod tests {
         let list_item_id_1 = insert_list_item(c, item_list_id_1, "List Item One".to_string());
         let july_19_2024 = DateTime::parse_from_rfc3339("2024-07-19T00:00:00-00:00").unwrap();
         diesel::insert_into(list_item_attribute::table)
-            .values((list_item_attribute::list_item_id.eq(&list_item_id_1), list_item_attribute::name.eq("My Boolean"), list_item_attribute::bool_val.eq(true)))
+            .values((list_item_attribute::list_item_id.eq(&list_item_id_1), list_item_attribute::attribute_type.eq("Boolean"), list_item_attribute::name.eq("My Boolean"), list_item_attribute::bool_val.eq(true)))
             .execute(c).expect("Could not insert boolean");
         diesel::insert_into(list_item_attribute::table)
-            .values((list_item_attribute::list_item_id.eq(&list_item_id_1), list_item_attribute::name.eq("My DateTime"), list_item_attribute::timestamp_val.eq(july_19_2024)))
+            .values((list_item_attribute::list_item_id.eq(&list_item_id_1), list_item_attribute::attribute_type.eq("DateTime"), list_item_attribute::name.eq("My DateTime"), list_item_attribute::timestamp_val.eq(july_19_2024)))
             .execute(c).expect("Could not insert DateTime");
         diesel::insert_into(list_item_attribute::table)
-            .values((list_item_attribute::list_item_id.eq(&list_item_id_1), list_item_attribute::name.eq("My Float"), list_item_attribute::float_val.eq(1.1f32)))
+            .values((list_item_attribute::list_item_id.eq(&list_item_id_1), list_item_attribute::attribute_type.eq("Float"), list_item_attribute::name.eq("My Float"), list_item_attribute::float_val.eq(1.1f32)))
             .execute(c).expect("Could not insert float");
         diesel::insert_into(list_item_attribute::table)
-            .values((list_item_attribute::list_item_id.eq(&list_item_id_1), list_item_attribute::name.eq("My Integer"), list_item_attribute::integer_val.eq(123)))
+            .values((list_item_attribute::list_item_id.eq(&list_item_id_1), list_item_attribute::attribute_type.eq("Integer"), list_item_attribute::name.eq("My Integer"), list_item_attribute::integer_val.eq(123)))
             .execute(c).expect("Could not insert integer");
         diesel::insert_into(list_item_attribute::table)
-            .values((list_item_attribute::list_item_id.eq(&list_item_id_1), list_item_attribute::name.eq("My Text"), list_item_attribute::text_val.eq("my text")))
+            .values((list_item_attribute::list_item_id.eq(&list_item_id_1), list_item_attribute::attribute_type.eq("Text"), list_item_attribute::name.eq("My Text"), list_item_attribute::text_val.eq("my text")))
             .execute(c).expect("Could not insert text");
 
         let results: Vec<ListItemAttributeDb> = list_item_attribute::table
@@ -124,6 +124,7 @@ pub(crate) mod tests {
             .load(c).unwrap();
 
         assert_eq!(5, results.len());
+        assert_eq!("Text", results[0].attribute_type);
         assert_eq!("My Text", results[0].name);
         assert_eq!("my text", results[0].text_val.clone().unwrap());
         assert_eq!("My Integer", results[1].name);
@@ -143,19 +144,19 @@ pub(crate) mod tests {
         let item_list_id_1 = insert_item_list(c, "Item List One".to_string());
         let july_20_2024 = DateTime::parse_from_rfc3339("2024-07-20T00:00:00-00:00").unwrap();
         diesel::insert_into(item_list_attribute::table)
-            .values((item_list_attribute::item_list_id.eq(&item_list_id_1), item_list_attribute::name.eq("My Boolean"), item_list_attribute::bool_val.eq(true)))
+            .values((item_list_attribute::item_list_id.eq(&item_list_id_1), item_list_attribute::attribute_type.eq("Boolean"), item_list_attribute::name.eq("My Boolean"), item_list_attribute::bool_val.eq(true)))
             .execute(c).expect("Could not insert boolean");
         diesel::insert_into(item_list_attribute::table)
-            .values((item_list_attribute::item_list_id.eq(&item_list_id_1), item_list_attribute::name.eq("My DateTime"), item_list_attribute::timestamp_val.eq(july_20_2024)))
+            .values((item_list_attribute::item_list_id.eq(&item_list_id_1), item_list_attribute::attribute_type.eq("DateTime"), item_list_attribute::name.eq("My DateTime"), item_list_attribute::timestamp_val.eq(july_20_2024)))
             .execute(c).expect("Could not insert DateTime");
         diesel::insert_into(item_list_attribute::table)
-            .values((item_list_attribute::item_list_id.eq(&item_list_id_1), item_list_attribute::name.eq("My Float"), item_list_attribute::float_val.eq(1.1f32)))
+            .values((item_list_attribute::item_list_id.eq(&item_list_id_1), item_list_attribute::attribute_type.eq("Float"), item_list_attribute::name.eq("My Float"), item_list_attribute::float_val.eq(1.1f32)))
             .execute(c).expect("Could not insert float");
         diesel::insert_into(item_list_attribute::table)
-            .values((item_list_attribute::item_list_id.eq(&item_list_id_1), item_list_attribute::name.eq("My Integer"), item_list_attribute::integer_val.eq(123)))
+            .values((item_list_attribute::item_list_id.eq(&item_list_id_1), item_list_attribute::attribute_type.eq("Integer"), item_list_attribute::name.eq("My Integer"), item_list_attribute::integer_val.eq(123)))
             .execute(c).expect("Could not insert integer");
         diesel::insert_into(item_list_attribute::table)
-            .values((item_list_attribute::item_list_id.eq(&item_list_id_1), item_list_attribute::name.eq("My Text"), item_list_attribute::text_val.eq("my text")))
+            .values((item_list_attribute::item_list_id.eq(&item_list_id_1), item_list_attribute::attribute_type.eq("Text"), item_list_attribute::name.eq("My Text"), item_list_attribute::text_val.eq("my text")))
             .execute(c).expect("Could not insert text");
 
         let results: Vec<ItemListAttributeDb> = item_list_attribute::table
@@ -164,6 +165,7 @@ pub(crate) mod tests {
             .order(item_list_attribute::id.desc())
             .load(c).unwrap();
         assert_eq!(5, results.len());
+        assert_eq!("Text", results[0].attribute_type);
         assert_eq!("My Text", results[0].name);
         assert_eq!("my text", results[0].text_val.clone().unwrap());
         assert_eq!("My Integer", results[1].name);

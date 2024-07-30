@@ -39,7 +39,7 @@ impl ListStorage for DatabaseListStorage {
 
         let mut list_item_attribute_map: HashMap<i32, HashMap<String, ListAttribute>> = HashMap::new();
         for liadb in list_item_attributes {
-            let lia_type = "Boolean".to_string();
+            let lia_type = liadb.attribute_type;
             let lia_attr: ListAttribute = ListAttribute::from_str(&lia_type).unwrap_or_else(|_| { ListAttribute::Text("".to_string()) });
             let lia_attr: ListAttribute = match lia_attr {
                 ListAttribute::Boolean(_) => { ListAttribute::Boolean(liadb.bool_val.unwrap_or_else(|| false)) }
@@ -56,7 +56,7 @@ impl ListStorage for DatabaseListStorage {
 
         let mut list_attribute_map: HashMap<i32, HashMap<String, ListAttribute>> = HashMap::new();
         for iladb in list_attributes {
-            let ila_type = "Boolean".to_string();
+            let ila_type = iladb.attribute_type;
             let ila_attr: ListAttribute = ListAttribute::from_str(&ila_type).unwrap_or_else(|_| { ListAttribute::Text("".to_string()) });
             let ila_attr: ListAttribute = match ila_attr {
                 ListAttribute::Boolean(_) => { ListAttribute::Boolean(iladb.bool_val.unwrap_or_else(|| false)) }
@@ -182,6 +182,14 @@ mod tests {
         assert_eq!(2, a.len());
         assert_eq!("Item List One", a[0].name);
         assert_eq!(1, a[0].attributes.len());
+        let foo_val = &a[0].attributes["Foo"];
+        if let ListAttribute::Text(val) = foo_val {
+            assert_eq!("Bar", val);
+        } else {
+            panic!("Should be a String, was {}", foo_val);
+        }
+
+        //assert_eq!("Foo", a[0].attributes[0]);
         assert_eq!(2, a[0].items.len());
         assert_eq!("IL1-1", a[0].items[0].name);
         assert_eq!("IL1-2", a[0].items[1].name);
@@ -201,33 +209,33 @@ mod tests {
         match attr {
             ListAttribute::Boolean(b) => {
                 diesel::insert_into(list_item_attribute::table)
-                    .values((list_item_attribute::list_item_id.eq(&list_item_id), list_item_attribute::name.eq(name), list_item_attribute::bool_val.eq(b)))
+                    .values((list_item_attribute::list_item_id.eq(&list_item_id), list_item_attribute::attribute_type.eq("Boolean"), list_item_attribute::name.eq(name), list_item_attribute::bool_val.eq(b)))
                     .execute(c).expect("Could not insert boolean");
             }
             ListAttribute::DateTime(dt) => {
                 diesel::insert_into(list_item_attribute::table)
-                    .values((list_item_attribute::list_item_id.eq(&list_item_id), list_item_attribute::name.eq(name), list_item_attribute::timestamp_val.eq(dt)))
+                    .values((list_item_attribute::list_item_id.eq(&list_item_id), list_item_attribute::attribute_type.eq("DateTime"), list_item_attribute::name.eq(name), list_item_attribute::timestamp_val.eq(dt)))
                     .execute(c).expect("Could not insert DateTime");
             }
             ListAttribute::Float(f) => {
                 diesel::insert_into(list_item_attribute::table)
-                    .values((list_item_attribute::list_item_id.eq(&list_item_id), list_item_attribute::name.eq(name), list_item_attribute::float_val.eq(f as f32)))
+                    .values((list_item_attribute::list_item_id.eq(&list_item_id), list_item_attribute::attribute_type.eq("Float"), list_item_attribute::name.eq(name), list_item_attribute::float_val.eq(f as f32)))
                     .execute(c).expect("Could not insert float");
             }
             ListAttribute::Integer(i) => {
                 diesel::insert_into(list_item_attribute::table)
-                    .values((list_item_attribute::list_item_id.eq(&list_item_id), list_item_attribute::name.eq(name), list_item_attribute::integer_val.eq(i as i32)))
+                    .values((list_item_attribute::list_item_id.eq(&list_item_id), list_item_attribute::attribute_type.eq("Integer"), list_item_attribute::name.eq(name), list_item_attribute::integer_val.eq(i as i32)))
                     .execute(c).expect("Could not insert integer");
             }
             ListAttribute::Price(p) => {
                 let str = format!("{}", p);
                 diesel::insert_into(list_item_attribute::table)
-                    .values((list_item_attribute::list_item_id.eq(&list_item_id), list_item_attribute::name.eq(name), list_item_attribute::text_val.eq(str)))
+                    .values((list_item_attribute::list_item_id.eq(&list_item_id), list_item_attribute::attribute_type.eq("Price"), list_item_attribute::name.eq(name), list_item_attribute::text_val.eq(str)))
                     .execute(c).expect("Could not insert price");
             }
             ListAttribute::Text(s) => {
                 diesel::insert_into(list_item_attribute::table)
-                    .values((list_item_attribute::list_item_id.eq(&list_item_id), list_item_attribute::name.eq(name), list_item_attribute::text_val.eq(s)))
+                    .values((list_item_attribute::list_item_id.eq(&list_item_id), list_item_attribute::attribute_type.eq("Text"), list_item_attribute::name.eq(name), list_item_attribute::text_val.eq(s)))
                     .execute(c).expect("Could not insert text");
             }
         }
@@ -237,33 +245,33 @@ mod tests {
         match attr {
             ListAttribute::Boolean(b) => {
                 diesel::insert_into(item_list_attribute::table)
-                    .values((item_list_attribute::item_list_id.eq(&item_list_id), item_list_attribute::name.eq(name), item_list_attribute::bool_val.eq(b)))
+                    .values((item_list_attribute::item_list_id.eq(&item_list_id), item_list_attribute::attribute_type.eq("Boolean"), item_list_attribute::name.eq(name), item_list_attribute::bool_val.eq(b)))
                     .execute(c).expect("Could not insert boolean");
             }
             ListAttribute::DateTime(dt) => {
                 diesel::insert_into(item_list_attribute::table)
-                    .values((item_list_attribute::item_list_id.eq(&item_list_id), item_list_attribute::name.eq(name), item_list_attribute::timestamp_val.eq(dt)))
+                    .values((item_list_attribute::item_list_id.eq(&item_list_id), item_list_attribute::attribute_type.eq("DateTime"), item_list_attribute::name.eq(name), item_list_attribute::timestamp_val.eq(dt)))
                     .execute(c).expect("Could not insert DateTime");
             }
             ListAttribute::Float(f) => {
                 diesel::insert_into(item_list_attribute::table)
-                    .values((item_list_attribute::item_list_id.eq(&item_list_id), item_list_attribute::name.eq(name), item_list_attribute::float_val.eq(f as f32)))
+                    .values((item_list_attribute::item_list_id.eq(&item_list_id), item_list_attribute::attribute_type.eq("Float"), item_list_attribute::name.eq(name), item_list_attribute::float_val.eq(f as f32)))
                     .execute(c).expect("Could not insert float");
             }
             ListAttribute::Integer(i) => {
                 diesel::insert_into(item_list_attribute::table)
-                    .values((item_list_attribute::item_list_id.eq(&item_list_id), item_list_attribute::name.eq(name), item_list_attribute::integer_val.eq(i as i32)))
+                    .values((item_list_attribute::item_list_id.eq(&item_list_id), item_list_attribute::attribute_type.eq("Integer"), item_list_attribute::name.eq(name), item_list_attribute::integer_val.eq(i as i32)))
                     .execute(c).expect("Could not insert integer");
             }
             ListAttribute::Price(p) => {
                 let str = format!("{}", p);
                 diesel::insert_into(item_list_attribute::table)
-                    .values((item_list_attribute::item_list_id.eq(&item_list_id), item_list_attribute::name.eq(name), item_list_attribute::text_val.eq(str)))
+                    .values((item_list_attribute::item_list_id.eq(&item_list_id), item_list_attribute::attribute_type.eq("Price"), item_list_attribute::name.eq(name), item_list_attribute::text_val.eq(str)))
                     .execute(c).expect("Could not insert price");
             }
             ListAttribute::Text(s) => {
                 diesel::insert_into(item_list_attribute::table)
-                    .values((item_list_attribute::item_list_id.eq(&item_list_id), item_list_attribute::name.eq(name), item_list_attribute::text_val.eq(s)))
+                    .values((item_list_attribute::item_list_id.eq(&item_list_id), item_list_attribute::attribute_type.eq("Text"), item_list_attribute::name.eq(name), item_list_attribute::text_val.eq(s)))
                     .execute(c).expect("Could not insert text");
             }
         }

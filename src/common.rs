@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use chrono::{DateTime, FixedOffset};
 use currency_rs::Currency;
-use strum_macros::EnumString;
+use strum_macros::{Display, EnumString};
 
 
 pub static ATTRIBUTE_QUANTITY: &str = "quantity";
@@ -37,7 +37,7 @@ pub enum ListAccess {
     Shared,
 }
 
-#[derive(Clone, Debug, EnumString, PartialEq)]
+#[derive(Clone, Debug, Display, EnumString, PartialEq)]
 pub enum ListAttribute {
     Boolean(bool),
     DateTime(DateTime<FixedOffset>),
