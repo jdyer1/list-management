@@ -37,18 +37,25 @@ pub(crate) mod tests {
     use chrono::DateTime;
     use diesel::r2d2::PooledConnection;
     use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+    use serial_test::serial;
+    use crate::common::{User, UserStorage};
+    use crate::db;
 
     use crate::models::{ItemListAttributeDb, ItemListDb, ItemListDbInsert, ListItemAttributeDb, ListItemDb, ListItemDbInsert};
-    use crate::schema::{item_list, item_list_attribute, list_item, list_item_attribute};
+    use crate::schema::{account, account_type, item_list, item_list_account, item_list_attribute, list_item, list_item_attribute, user, user_account};
+    use crate::user_storage::DatabaseUserStorage;
 
     use super::*;
 
     #[test]
+    #[serial]
     fn test_item_lists() {
-        let c = &mut setup_db();
-        let item_list_id_1 = insert_item_list(c, "Item List One".to_string());
-        let item_list_id_2 = insert_item_list(c, "Item List Two".to_string());
-        let item_list_id_3 = insert_item_list(c, "Item List Three".to_string());
+        setup_db();
+        let user_id = insert_user("a", "b");
+        let c = &mut db::connection();
+        let item_list_id_1 = insert_item_list(c, user_id, "Item List One".to_string());
+        let item_list_id_2 = insert_item_list(c, user_id, "Item List Two".to_string());
+        let item_list_id_3 = insert_item_list(c, user_id, "Item List Three".to_string());
 
         let results: Vec<ItemListDb> = item_list::table
             .select(ItemListDb::as_select()).order(item_list::id.desc())
@@ -76,9 +83,12 @@ pub(crate) mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_list_items() {
-        let c = &mut setup_db();
-        let item_list_id_1 = insert_item_list(c, "Item List One".to_string());
+        setup_db();
+        let user_id = insert_user("a", "b");
+        let c = &mut db::connection();
+        let item_list_id_1 = insert_item_list(c, user_id, "Item List One".to_string());
         let list_item_id_1 = insert_list_item(c, item_list_id_1, "List Item One".to_string());
         let list_item_id_2 = insert_list_item(c, item_list_id_1, "List Item Two".to_string());
 
@@ -96,9 +106,12 @@ pub(crate) mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_list_item_attributes() {
-        let c = &mut setup_db();
-        let item_list_id_1 = insert_item_list(c, "Item List One".to_string());
+        setup_db();
+        let user_id = insert_user("a", "b");
+        let c = &mut db::connection();
+        let item_list_id_1 = insert_item_list(c, user_id, "Item List One".to_string());
         let list_item_id_1 = insert_list_item(c, item_list_id_1, "List Item One".to_string());
         let july_19_2024 = DateTime::parse_from_rfc3339("2024-07-19T00:00:00-00:00").unwrap();
         diesel::insert_into(list_item_attribute::table)
@@ -138,10 +151,13 @@ pub(crate) mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_item_list_attributes() {
-        let c = &mut setup_db();
+        setup_db();
+        let user_id = insert_user("a", "b");
+        let c = &mut db::connection();
 
-        let item_list_id_1 = insert_item_list(c, "Item List One".to_string());
+        let item_list_id_1 = insert_item_list(c, user_id, "Item List One".to_string());
         let july_20_2024 = DateTime::parse_from_rfc3339("2024-07-20T00:00:00-00:00").unwrap();
         diesel::insert_into(item_list_attribute::table)
             .values((item_list_attribute::item_list_id.eq(&item_list_id_1), item_list_attribute::attribute_type.eq("Boolean"), item_list_attribute::name.eq("My Boolean"), item_list_attribute::bool_val.eq(true)))
@@ -178,13 +194,24 @@ pub(crate) mod tests {
         assert!(results[4].bool_val.unwrap());
     }
 
-    pub fn insert_item_list(c: &mut PooledConnection<ConnectionManager<SqliteConnection>>, name1: String) -> i32 {
+    pub fn insert_user(source: &str, source_id: &str) -> i32 {
+        DatabaseUserStorage().create_or_update_user(User {
+            id: 0,
+            name: "".to_string(),
+            source: source.to_string(),
+            source_id: source_id.to_string(),
+            user_accounts: vec![],
+        }).id as i32
+    }
+
+    pub fn insert_item_list(c: &mut PooledConnection<ConnectionManager<SqliteConnection>>, user_id: i32, name1: String) -> i32 {
         let item_list = ItemListDbInsert {
             deleted: &false,
             folder: &"default".to_string(),
             access: &"Public".to_string(),
             list_type: &"Standard".to_string(),
             name: &name1,
+            owner_user_id: user_id,
         };
         diesel::insert_into(item_list::table).values(&item_list).execute(c).unwrap();
         item_list::table
@@ -204,19 +231,23 @@ pub(crate) mod tests {
             .load(c).unwrap()[0].id
     }
 
-    pub fn cleanup_db(c: &mut PooledConnection<ConnectionManager<SqliteConnection>>) {
+    fn cleanup_db(c: &mut PooledConnection<ConnectionManager<SqliteConnection>>) {
         diesel::delete(list_item_attribute::table).execute(c).unwrap();
         diesel::delete(list_item::table).execute(c).unwrap();
         diesel::delete(item_list_attribute::table).execute(c).unwrap();
+        diesel::delete(item_list_account::table).execute(c).unwrap();
         diesel::delete(item_list::table).execute(c).unwrap();
+        diesel::delete(user_account::table).execute(c).unwrap();
+        diesel::delete(account_type::table).execute(c).unwrap();
+        diesel::delete(account::table).execute(c).unwrap();
+        diesel::delete(user::table).execute(c).unwrap();
     }
 
     pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
 
-    pub fn setup_db() -> PooledConnection<ConnectionManager<SqliteConnection>> {
+    pub fn setup_db() {
         let mut c = connection();
         c.run_pending_migrations(MIGRATIONS).expect("Could not run migrations");
         cleanup_db(&mut c);
-        return c;
     }
 }

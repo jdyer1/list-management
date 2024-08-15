@@ -1,2 +1,2 @@
-DROP TABLE item_list;
-DROP TABLE item_list_attribute;
+DROP TABLE account;
+DROP TABLE account_type;

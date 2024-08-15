@@ -1,7 +1,9 @@
 pub mod common;
-pub mod db;
+mod db;
 pub mod list_of_lists_service;
-pub mod list_storage;
-pub mod models;
-pub mod schema;
+mod list_storage;
+mod models;
+mod schema;
+mod user_service;
+mod user_storage;
 

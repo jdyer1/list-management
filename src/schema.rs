@@ -1,6 +1,23 @@
 diesel::table! {
+    account (id) {
+        id -> Integer,
+        account_type_id -> Integer,
+        account_source_id -> Text,
+    }
+}
+
+diesel::table! {
+    account_type (id) {
+        id -> Integer,
+        name -> Text,
+        source -> Text,
+    }
+}
+
+diesel::table! {
     item_list (id) {
         id -> Integer,
+        owner_user_id -> Integer,
         created -> TimestamptzSqlite,
         deleted -> Bool,
         folder -> Text,
@@ -8,6 +25,13 @@ diesel::table! {
         list_type -> Text,
         name -> Text,
         modified -> TimestamptzSqlite,
+    }
+}
+
+diesel::table! {
+    item_list_account (item_list_id, account_id) {
+        item_list_id -> Integer,
+        account_id -> Integer,
     }
 }
 
@@ -25,8 +49,6 @@ diesel::table! {
     }
 }
 
-diesel::joinable!(item_list_attribute -> item_list (item_list_id));
-
 diesel::table! {
     list_item (id) {
         id -> Integer,
@@ -37,8 +59,6 @@ diesel::table! {
         source -> Text,
     }
 }
-
-diesel::joinable!(list_item -> item_list (item_list_id));
 
 diesel::table! {
     list_item_attribute (id) {
@@ -54,12 +74,42 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    user (id) {
+        id -> Integer,
+        name -> Text,
+        source -> Text,
+        source_id -> Text
+    }
+}
+
+diesel::table! {
+    user_account (user_id, account_id) {
+        user_id -> Integer,
+        account_id -> Integer,
+    }
+}
+
+diesel::joinable!(user_account -> user (user_id));
+diesel::joinable!(user_account -> account (account_id));
+diesel::joinable!(account -> account_type (account_type_id));
+diesel::joinable!(item_list -> user (owner_user_id));
+diesel::joinable!(item_list_account -> item_list (item_list_id));
+diesel::joinable!(item_list_account -> account (account_id));
+diesel::joinable!(item_list_attribute -> item_list (item_list_id));
+diesel::joinable!(list_item -> item_list (item_list_id));
 diesel::joinable!(list_item_attribute -> list_item (list_item_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
+    account,
+    account_type,
     item_list,
+    item_list_account,
     item_list_attribute,
     list_item,
     list_item_attribute,
+    user,
+    user_account,
 );
+
 

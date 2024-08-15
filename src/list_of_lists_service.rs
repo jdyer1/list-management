@@ -1,7 +1,6 @@
 use std::cmp::Ordering;
 use std::collections::HashMap;
 
-
 use crate::common::{ATTRIBUTE_QUANTITY, ItemList, ItemListRollup, ListAccess, ListAttribute, ListItem, ListStorage, ListType, LMContext, PagingRequest, SortKey, SortRequest};
 use crate::common::ListAttribute::DateTime;
 
@@ -26,7 +25,8 @@ pub fn retrieve_lists(context: impl LMContext,
                       sort: SortRequest,
                       return_attributes: bool,
                       return_rollups: bool) -> Vec<ListResult> {
-    let a = context.list_storage().all_lists();
+    let (user_state, context) = context.current_user_state();
+    let a = context.list_storage().user_lists(user_state);
     let start = paging.start as usize;
     let mut end = (paging.start + paging.rows) as usize;
     if end > a.len() {
@@ -207,13 +207,14 @@ mod tests {
     use currency_rs::Currency;
 
     use crate::common::*;
+    use crate::common::tests::context;
 
     use super::*;
 
     #[test]
     fn test_retrieve_all_lists_by_id() {
         let sort_request = sort(SortKey::Id, false);
-        let results = retrieve_lists(context(item_lists()), selector(), paging(0, 10), sort_request, false, false);
+        let results = retrieve_lists(context(item_lists(), users(), user(), state()), selector(), paging(0, 10), sort_request, false, false);
         assert_eq!(3, results.len());
         assert_eq!(1, results[0].list.id);
         assert_eq!(2, results[1].list.id);
@@ -224,12 +225,15 @@ mod tests {
         assert!(results[0].rollups.is_empty());
         assert!(results[1].rollups.is_empty());
         assert!(results[2].rollups.is_empty());
+        assert_eq!(1, results[0].list.list_accounts.len());
+        assert_eq!(1, results[1].list.list_accounts.len());
+        assert_eq!(1, results[2].list.list_accounts.len());
     }
 
     #[test]
     fn test_retrieve_all_lists_by_id_with_attributes_and_rollups() {
         let sort_request = sort(SortKey::Id, false);
-        let results = retrieve_lists(context(item_lists()), selector(), paging(0, 10), sort_request, true, true);
+        let results = retrieve_lists(context(item_lists(), users(), user(), state()), selector(), paging(0, 10), sort_request, true, true);
         assert_eq!(3, results.len());
         assert_eq!(1, results[0].list.id);
         assert_eq!(2, results[1].list.id);
@@ -274,7 +278,7 @@ mod tests {
     #[test]
     fn test_retrieve_all_lists_by_name() {
         let sort_request = sort(SortKey::Name, false);
-        let results = retrieve_lists(context(item_lists()), selector(), paging(0, 10), sort_request, true, true);
+        let results = retrieve_lists(context(item_lists(), users(), user(), state()), selector(), paging(0, 10), sort_request, true, true);
         assert_eq!(3, results.len());
         assert_eq!("A3 Naming", results[0].list.name);
         assert_eq!("B1 My Name", results[1].list.name);
@@ -284,7 +288,7 @@ mod tests {
     #[test]
     fn test_retrieve_all_lists_by_id_descending() {
         let sort_request = sort(SortKey::Id, true);
-        let results = retrieve_lists(context(item_lists()), selector(), paging(0, 10), sort_request, true, true);
+        let results = retrieve_lists(context(item_lists(), users(), user(), state()), selector(), paging(0, 10), sort_request, true, true);
         assert_eq!(3, results.len());
         assert_eq!(3, results[0].list.id);
         assert_eq!(2, results[1].list.id);
@@ -294,7 +298,7 @@ mod tests {
     #[test]
     fn test_retrieve_all_lists_by_name_descending() {
         let sort_request = sort(SortKey::Name, true);
-        let results = retrieve_lists(context(item_lists()), selector(), paging(0, 10), sort_request, true, true);
+        let results = retrieve_lists(context(item_lists(), users(), user(), state()), selector(), paging(0, 10), sort_request, true, true);
         assert_eq!(3, results.len());
         assert_eq!("C2 Your Name", results[0].list.name);
         assert_eq!("B1 My Name", results[1].list.name);
@@ -304,7 +308,7 @@ mod tests {
     #[test]
     fn test_retrieve_all_lists_by_create_date() {
         let sort_request = sort(SortKey::CreatedDate, false);
-        let results = retrieve_lists(context(item_lists()), selector(), paging(0, 10), sort_request, true, true);
+        let results = retrieve_lists(context(item_lists(), users(), user(), state()), selector(), paging(0, 10), sort_request, true, true);
         assert_eq!(3, results.len());
         assert_eq!(2, results[0].list.id);
         assert_eq!(1, results[1].list.id);
@@ -314,7 +318,7 @@ mod tests {
     #[test]
     fn test_retrieve_all_lists_by_modified_date_descending() {
         let sort_request = sort(SortKey::ModifiedDate, true);
-        let results = retrieve_lists(context(item_lists()), selector(), paging(0, 10), sort_request, true, true);
+        let results = retrieve_lists(context(item_lists(), users(), user(), state()), selector(), paging(0, 10), sort_request, true, true);
         assert_eq!(3, results.len());
         assert_eq!(2, results[0].list.id);
         assert_eq!(3, results[1].list.id);
@@ -324,7 +328,7 @@ mod tests {
     #[test]
     fn test_retrieve_all_lists_by_nonexistent_attribute_descending() {
         let sort_request = sort(SortKey::Attribute("does not exist".to_string()), false);
-        let results = retrieve_lists(context(item_lists()), selector(), paging(0, 10), sort_request, true, true);
+        let results = retrieve_lists(context(item_lists(), users(), user(), state()), selector(), paging(0, 10), sort_request, true, true);
         assert_eq!(3, results.len());
         assert_eq!(1, results[0].list.id);
         assert_eq!(2, results[1].list.id);
@@ -334,7 +338,7 @@ mod tests {
     #[test]
     fn test_retrieve_all_lists_by_boolean_attribute_descending() {
         let sort_request = sort(SortKey::Attribute("my boolean".to_string()), true);
-        let results = retrieve_lists(context(item_lists()), selector(), paging(0, 10), sort_request, true, true);
+        let results = retrieve_lists(context(item_lists(), users(), user(), state()), selector(), paging(0, 10), sort_request, true, true);
         assert_eq!(3, results.len());
         assert_eq!(1, results[0].list.id); // has true
         assert_eq!(3, results[1].list.id); // has false, id (descending) tie-breaker
@@ -344,7 +348,7 @@ mod tests {
     #[test]
     fn test_retrieve_all_lists_by_float_attribute() {
         let sort_request = sort(SortKey::Attribute("my float".to_string()), false);
-        let results = retrieve_lists(context(item_lists()), selector(), paging(0, 10), sort_request, true, true);
+        let results = retrieve_lists(context(item_lists(), users(), user(), state()), selector(), paging(0, 10), sort_request, true, true);
         assert_eq!(3, results.len());
         assert_eq!(3, results[0].list.id);  // -3.1
         assert_eq!(2, results[1].list.id);  // -2.1
@@ -354,7 +358,7 @@ mod tests {
     #[test]
     fn test_retrieve_all_lists_by_integer_attribute() {
         let sort_request = sort(SortKey::Attribute("my integer".to_string()), false);
-        let results = retrieve_lists(context(item_lists()), selector(), paging(0, 10), sort_request, true, true);
+        let results = retrieve_lists(context(item_lists(), users(), user(), state()), selector(), paging(0, 10), sort_request, true, true);
         assert_eq!(3, results.len());
         assert_eq!(1, results[0].list.id);
         assert_eq!(2, results[1].list.id);
@@ -364,7 +368,7 @@ mod tests {
     #[test]
     fn test_retrieve_all_lists_by_price_attribute() {
         let sort_request = sort(SortKey::Attribute("my price".to_string()), false);
-        let results = retrieve_lists(context(item_lists()), selector(), paging(0, 10), sort_request, true, true);
+        let results = retrieve_lists(context(item_lists(), users(), user(), state()), selector(), paging(0, 10), sort_request, true, true);
         assert_eq!(3, results.len());
         assert_eq!(2, results[0].list.id);
         assert_eq!(3, results[1].list.id);
@@ -374,7 +378,7 @@ mod tests {
     #[test]
     fn test_retrieve_all_lists_by_text_attribute() {
         let sort_request = sort(SortKey::Attribute("my text".to_string()), false);
-        let results = retrieve_lists(context(item_lists()), selector(), paging(0, 10), sort_request, true, true);
+        let results = retrieve_lists(context(item_lists(), users(), user(), state()), selector(), paging(0, 10), sort_request, true, true);
         assert_eq!(3, results.len());
         assert_eq!(2, results[0].list.id); // archive C2 Your Name
         assert_eq!(3, results[1].list.id); // default A3 naming
@@ -384,7 +388,7 @@ mod tests {
     #[test]
     fn test_retrieve_all_lists_by_date_attribute() {
         let sort_request = sort(SortKey::Attribute("my date".to_string()), false);
-        let results = retrieve_lists(context(item_lists()), selector(), paging(0, 10), sort_request, true, true);
+        let results = retrieve_lists(context(item_lists(), users(), user(), state()), selector(), paging(0, 10), sort_request, true, true);
         assert_eq!(3, results.len());
         assert_eq!(2, results[0].list.id);
         assert_eq!(1, results[1].list.id);
@@ -393,20 +397,20 @@ mod tests {
 
     #[test]
     fn test_retrieve_all_lists_with_paging() {
-        let results = retrieve_lists(context(item_lists()), selector(), paging(1, 1), sort(SortKey::Id, false), true, true);
+        let results = retrieve_lists(context(item_lists(), users(), user(), state()), selector(), paging(1, 1), sort(SortKey::Id, false), true, true);
         assert_eq!(1, results.len());
         assert_eq!(2, results[0].list.id);
     }
 
     #[test]
     fn test_retrieve_all_lists_with_paging_beyond_end() {
-        let results = retrieve_lists(context(item_lists()), selector(), paging(3, 10), sort(SortKey::Id, false), true, true);
+        let results = retrieve_lists(context(item_lists(), users(), user(), state()), selector(), paging(3, 10), sort(SortKey::Id, false), true, true);
         assert_eq!(0, results.len());
     }
 
     #[test]
     fn test_retrieve_all_lists_with_no_rows_requested() {
-        let results = retrieve_lists(context(item_lists()), selector(), paging(0, 0), sort(SortKey::Id, false), true, true);
+        let results = retrieve_lists(context(item_lists(), users(), user(), state()), selector(), paging(0, 0), sort(SortKey::Id, false), true, true);
         assert_eq!(0, results.len());
     }
 
@@ -414,7 +418,7 @@ mod tests {
     fn test_retrieve_not_deleted_lists_by_id() {
         let mut selector = selector();
         selector.limit_show_deleted = false;
-        let results = retrieve_lists(context(item_lists()), selector, paging(0, 10), sort(SortKey::Id, false), true, true);
+        let results = retrieve_lists(context(item_lists(), users(), user(), state()), selector, paging(0, 10), sort(SortKey::Id, false), true, true);
         assert_eq!(2, results.len());
         assert_eq!(2, results[0].list.id);
         assert_eq!(3, results[1].list.id);
@@ -424,7 +428,7 @@ mod tests {
     fn test_retrieve_deleted_lists_by_id() {
         let mut selector = selector();
         selector.limit_show_not_deleted = false;
-        let results = retrieve_lists(context(item_lists()), selector, paging(0, 10), sort(SortKey::Id, false), true, true);
+        let results = retrieve_lists(context(item_lists(), users(), user(), state()), selector, paging(0, 10), sort(SortKey::Id, false), true, true);
         assert_eq!(1, results.len());
         assert_eq!(1, results[0].list.id);
     }
@@ -433,7 +437,7 @@ mod tests {
     fn test_retrieve_editable_lists_by_id() {
         let mut selector = selector();
         selector.limit_show_read_only = false;
-        let results = retrieve_lists(context(item_lists()), selector, paging(0, 10), sort(SortKey::Id, false), true, true);
+        let results = retrieve_lists(context(item_lists(), users(), user(), state()), selector, paging(0, 10), sort(SortKey::Id, false), true, true);
         assert_eq!(2, results.len());
         assert_eq!(1, results[0].list.id);
         assert_eq!(2, results[1].list.id);
@@ -443,7 +447,7 @@ mod tests {
     fn test_retrieve_lists_in_archive_folder_by_id() {
         let mut selector = selector();
         selector.limit_in_folders = vec!["archive".to_string()];
-        let results = retrieve_lists(context(item_lists()), selector, paging(0, 10), sort(SortKey::Id, false), true, true);
+        let results = retrieve_lists(context(item_lists(), users(), user(), state()), selector, paging(0, 10), sort(SortKey::Id, false), true, true);
         assert_eq!(1, results.len());
         assert_eq!(2, results[0].list.id);
     }
@@ -452,7 +456,7 @@ mod tests {
     fn test_retrieve_private_lists_by_id() {
         let mut selector = selector();
         selector.limit_list_access = vec![ListAccess::Private];
-        let results = retrieve_lists(context(item_lists()), selector, paging(0, 10), sort(SortKey::Id, false), true, true);
+        let results = retrieve_lists(context(item_lists(), users(), user(), state()), selector, paging(0, 10), sort(SortKey::Id, false), true, true);
         assert_eq!(1, results.len());
         assert_eq!(2, results[0].list.id);
     }
@@ -461,7 +465,7 @@ mod tests {
     fn test_retrieve_public_or_shared_lists_by_id() {
         let mut selector = selector();
         selector.limit_list_access = vec![ListAccess::Public, ListAccess::Shared];
-        let results = retrieve_lists(context(item_lists()), selector, paging(0, 10), sort(SortKey::Id, false), true, true);
+        let results = retrieve_lists(context(item_lists(), users(), user(), state()), selector, paging(0, 10), sort(SortKey::Id, false), true, true);
         assert_eq!(2, results.len());
         assert_eq!(1, results[0].list.id);
         assert_eq!(3, results[1].list.id);
@@ -471,7 +475,7 @@ mod tests {
     fn test_retrieve_transient_lists_by_id() {
         let mut selector = selector();
         selector.limit_list_types = vec![ListType::Transient];
-        let results = retrieve_lists(context(item_lists()), selector, paging(0, 10), sort(SortKey::Id, false), true, true);
+        let results = retrieve_lists(context(item_lists(), users(), user(), state()), selector, paging(0, 10), sort(SortKey::Id, false), true, true);
         assert_eq!(1, results.len());
         assert_eq!(3, results[0].list.id);
     }
@@ -480,7 +484,7 @@ mod tests {
     fn test_retrieve_standard_or_program_lists_by_id() {
         let mut selector = selector();
         selector.limit_list_types = vec![ListType::Standard, ListType::System];
-        let results = retrieve_lists(context(item_lists()), selector, paging(0, 10), sort(SortKey::Id, false), true, true);
+        let results = retrieve_lists(context(item_lists(), users(), user(), state()), selector, paging(0, 10), sort(SortKey::Id, false), true, true);
         assert_eq!(2, results.len());
         assert_eq!(1, results[0].list.id);
         assert_eq!(2, results[1].list.id);
@@ -490,7 +494,7 @@ mod tests {
     fn test_retrieve_lists_with_keyword_by_id() {
         let mut selector = selector();
         selector.limit_name_keywords = Some("name".to_string());
-        let results = retrieve_lists(context(item_lists()), selector, paging(0, 10), sort(SortKey::Id, false), true, true);
+        let results = retrieve_lists(context(item_lists(), users(), user(), state()), selector, paging(0, 10), sort(SortKey::Id, false), true, true);
         assert_eq!(2, results.len());
         assert_eq!(1, results[0].list.id);
         assert_eq!(2, results[1].list.id);
@@ -500,7 +504,7 @@ mod tests {
     fn test_retrieve_lists_with_wildcard_keyword_by_id() {
         let mut selector = selector();
         selector.limit_name_keywords = Some("nam*".to_string());
-        let results = retrieve_lists(context(item_lists()), selector, paging(0, 10), sort(SortKey::Id, false), true, true);
+        let results = retrieve_lists(context(item_lists(), users(), user(), state()), selector, paging(0, 10), sort(SortKey::Id, false), true, true);
         assert_eq!(3, results.len());
         assert_eq!(1, results[0].list.id);
         assert_eq!(2, results[1].list.id);
@@ -511,47 +515,9 @@ mod tests {
     fn test_retrieve_lists_with_multiple_keyword_by_id() {
         let mut selector = selector();
         selector.limit_name_keywords = Some("Nam* c2".to_string());
-        let results = retrieve_lists(context(item_lists()), selector, paging(0, 10), sort(SortKey::Id, false), true, true);
+        let results = retrieve_lists(context(item_lists(), users(), user(), state()), selector, paging(0, 10), sort(SortKey::Id, false), true, true);
         assert_eq!(1, results.len());
         assert_eq!(2, results[0].list.id);
-    }
-
-    fn context(item_lists: Vec<ItemList>) -> impl LMContext {
-        struct LMC {
-            lmc_al: Vec<ItemList>,
-        }
-        struct LS {
-            ls_al: Vec<ItemList>,
-        }
-
-        impl LMContext for LMC {
-            fn list_storage(&self) -> impl ListStorage {
-                return LS {
-                    ls_al: self.lmc_al.clone()
-                };
-            }
-        }
-
-        impl ListStorage for LS {
-            fn all_lists(&self) -> Vec<ItemList> {
-                self.ls_al.clone()
-            }
-        }
-        LMC {
-            lmc_al: item_lists,
-        }
-    }
-
-    fn item_lists() -> Vec<ItemList> {
-        let d1 = DateTime::parse_from_rfc3339("2024-07-19T00:00:00-00:00").unwrap();
-        let d2 = DateTime::parse_from_rfc3339("2024-07-20T00:00:00-00:00").unwrap();
-        let d3 = DateTime::parse_from_rfc3339("2024-07-21T00:00:00-00:00").unwrap();
-
-        vec![
-            item_list(1, "B1 My Name".to_string(), "default".to_string(), true, false, ListAccess::Public, ListType::Standard, d2, d1, "3.33".to_string()),
-            item_list(3, "A3 Naming".to_string(), "default".to_string(), false, true, ListAccess::Shared, ListType::Transient, d3, d2, "2.22".to_string()),
-            item_list(2, "C2 Your Name".to_string(), "archive".to_string(), false, false, ListAccess::Private, ListType::System, d1, d3, "1.11".to_string()),
-        ]
     }
 
     fn item_list(id: u64, name: String, folder: String, deleted: bool, read_only: bool,
@@ -579,6 +545,16 @@ mod tests {
             amount: Currency::new_string("2.34", None).unwrap(),
             source: "qwe-source".to_string(),
         }));
+
+        let list_accounts = vec![Account {
+            id: 1234,
+            account_type: AccountType {
+                id: 123,
+                name: "account-type".to_string(),
+                source: "account-type-source".to_string(),
+            },
+            account_source_id: "account-source-id".to_string(),
+        }];
 
         let i1 = ListItem {
             id: 100 + id,
@@ -616,9 +592,29 @@ mod tests {
             folder,
             items,
             list_access,
+            list_accounts,
             list_type,
             modified,
             name,
+        }
+    }
+
+    fn item_lists() -> Vec<ItemList> {
+        let d1 = DateTime::parse_from_rfc3339("2024-07-19T00:00:00-00:00").unwrap();
+        let d2 = DateTime::parse_from_rfc3339("2024-07-20T00:00:00-00:00").unwrap();
+        let d3 = DateTime::parse_from_rfc3339("2024-07-21T00:00:00-00:00").unwrap();
+
+        vec![
+            item_list(1, "B1 My Name".to_string(), "default".to_string(), true, false, ListAccess::Public, ListType::Standard, d2, d1, "3.33".to_string()),
+            item_list(3, "A3 Naming".to_string(), "default".to_string(), false, true, ListAccess::Shared, ListType::Transient, d3, d2, "2.22".to_string()),
+            item_list(2, "C2 Your Name".to_string(), "archive".to_string(), false, false, ListAccess::Private, ListType::System, d1, d3, "1.11".to_string()),
+        ]
+    }
+
+    fn paging(start: u64, rows: u64) -> PagingRequest {
+        PagingRequest {
+            start,
+            rows,
         }
     }
 
@@ -634,17 +630,32 @@ mod tests {
         }
     }
 
-    fn paging(start: u64, rows: u64) -> PagingRequest {
-        PagingRequest {
-            start,
-            rows,
-        }
-    }
-
     fn sort(key: SortKey, descending: bool) -> SortRequest {
         SortRequest {
             descending,
             key,
         }
     }
+
+    fn state() -> UserState {
+        UserState {
+            active_user_accounts: user().user_accounts,
+            user_id: user().id,
+        }
+    }
+
+    fn user() -> User {
+        User {
+            id: 1,
+            name: "One Name".to_string(),
+            source: "user-source".to_string(),
+            source_id: "ONE-ID".to_string(),
+            user_accounts: vec![],
+        }
+    }
+
+    fn users() -> Vec<User> {
+        vec![user()]
+    }
+
 }
