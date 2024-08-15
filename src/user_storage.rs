@@ -22,15 +22,14 @@ impl UserStorage for DatabaseUserStorage {
                     ))
                     .execute(&mut c)
                     .expect("Could not insert user");
-                let my_user_id_1 = user::table
+                user::table
                     .select(UserDb::as_select())
                     .filter(user::name.eq(&u1.name))
                     .filter(user::source.eq(&u1.source))
                     .filter(user::source_id.eq(&u1.source_id))
                     .load(&mut c)
                     .unwrap()[0]
-                    .id;
-                my_user_id_1
+                    .id
             } else {
                 let my_user_id_1 = prior_val.unwrap().1.id as i32;
                 let _ = diesel::update(user::table)
@@ -70,7 +69,7 @@ impl UserStorage for DatabaseUserStorage {
 
     fn delete_user(&mut self, user_id: &u64) -> bool {
         let mut c = db::connection();
-        let uid: i32 = user_id.clone() as i32;
+        let uid: i32 = *user_id as i32;
         let _ = diesel::delete(user_account::table)
             .filter(user_account::user_id.eq(&uid))
             .execute(&mut c)

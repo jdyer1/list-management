@@ -7,7 +7,7 @@ use dotenvy::dotenv;
 use lazy_static::lazy_static;
 
 lazy_static! {
-    static ref POOL: Pool<ConnectionManager<SqliteConnection>> = { get_connection_pool() };
+    static ref POOL: Pool<ConnectionManager<SqliteConnection>> = get_connection_pool();
 }
 
 pub fn connection() -> PooledConnection<ConnectionManager<SqliteConnection>> {

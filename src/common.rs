@@ -117,7 +117,7 @@ impl Default for Price {
 
 impl PartialEq<Self> for Price {
     fn eq(&self, other: &Self) -> bool {
-        &self.amount.value() == &other.amount.value()
+        self.amount.value() == other.amount.value()
     }
 }
 

@@ -114,26 +114,20 @@ fn get_lists(lists: Vec<ItemListDb>) -> Vec<ItemList> {
         let lia_attr: ListAttribute = ListAttribute::from_str(&lia_type)
             .unwrap_or_else(|_| ListAttribute::Text("".to_string()));
         let lia_attr: ListAttribute = match lia_attr {
-            ListAttribute::Boolean(_) => {
-                ListAttribute::Boolean(liadb.bool_val.unwrap_or_else(|| false))
-            }
+            ListAttribute::Boolean(_) => ListAttribute::Boolean(liadb.bool_val.unwrap_or(false)),
             ListAttribute::DateTime(_) => ListAttribute::DateTime(DateTime::from(
                 liadb
                     .timestamp_val
                     .unwrap_or_else(|| DateTime::from(chrono::offset::Local::now())),
             )),
-            ListAttribute::Float(_) => {
-                ListAttribute::Float(liadb.float_val.unwrap_or_else(|| 0f32) as f64)
-            }
+            ListAttribute::Float(_) => ListAttribute::Float(liadb.float_val.unwrap_or(0f32) as f64),
             ListAttribute::Integer(_) => {
-                ListAttribute::Integer(liadb.integer_val.unwrap_or_else(|| 0) as i64)
+                ListAttribute::Integer(liadb.integer_val.unwrap_or(0) as i64)
             }
             ListAttribute::Price(_) => {
-                ListAttribute::Price(to_price(liadb.text_val.unwrap_or_else(|| "".to_string())))
+                ListAttribute::Price(to_price(liadb.text_val.unwrap_or("".to_string())))
             }
-            ListAttribute::Text(_) => {
-                ListAttribute::Text(liadb.text_val.unwrap_or_else(|| "".to_string()))
-            }
+            ListAttribute::Text(_) => ListAttribute::Text(liadb.text_val.unwrap_or("".to_string())),
         };
         list_item_attribute_map
             .entry(liadb.list_item_id)
@@ -147,26 +141,20 @@ fn get_lists(lists: Vec<ItemListDb>) -> Vec<ItemList> {
         let ila_attr: ListAttribute = ListAttribute::from_str(&ila_type)
             .unwrap_or_else(|_| ListAttribute::Text("".to_string()));
         let ila_attr: ListAttribute = match ila_attr {
-            ListAttribute::Boolean(_) => {
-                ListAttribute::Boolean(iladb.bool_val.unwrap_or_else(|| false))
-            }
+            ListAttribute::Boolean(_) => ListAttribute::Boolean(iladb.bool_val.unwrap_or(false)),
             ListAttribute::DateTime(_) => ListAttribute::DateTime(DateTime::from(
                 iladb
                     .timestamp_val
-                    .unwrap_or_else(|| DateTime::from(chrono::offset::Local::now())),
+                    .unwrap_or(DateTime::from(chrono::offset::Local::now())),
             )),
-            ListAttribute::Float(_) => {
-                ListAttribute::Float(iladb.float_val.unwrap_or_else(|| 0f32) as f64)
-            }
+            ListAttribute::Float(_) => ListAttribute::Float(iladb.float_val.unwrap_or(0f32) as f64),
             ListAttribute::Integer(_) => {
-                ListAttribute::Integer(iladb.integer_val.unwrap_or_else(|| 0) as i64)
+                ListAttribute::Integer(iladb.integer_val.unwrap_or(0) as i64)
             }
             ListAttribute::Price(_) => {
-                ListAttribute::Price(to_price(iladb.text_val.unwrap_or_else(|| "".to_string())))
+                ListAttribute::Price(to_price(iladb.text_val.unwrap_or("".to_string())))
             }
-            ListAttribute::Text(_) => {
-                ListAttribute::Text(iladb.text_val.unwrap_or_else(|| "".to_string()))
-            }
+            ListAttribute::Text(_) => ListAttribute::Text(iladb.text_val.unwrap_or("".to_string())),
         };
         list_attribute_map
             .entry(iladb.item_list_id)
@@ -218,11 +206,9 @@ fn get_lists(lists: Vec<ItemListDb>) -> Vec<ItemList> {
                         }
                     })
                     .collect(),
-                list_access: ListAccess::from_str(&ildb.0.access)
-                    .unwrap_or_else(|_| ListAccess::Public),
+                list_access: ListAccess::from_str(&ildb.0.access).unwrap_or(ListAccess::Public),
                 list_accounts: accounts_per_lists.get(&il_id).unwrap_or(&vec![]).to_owned(),
-                list_type: ListType::from_str(&ildb.0.list_type)
-                    .unwrap_or_else(|_| ListType::Standard),
+                list_type: ListType::from_str(&ildb.0.list_type).unwrap_or(ListType::Standard),
                 modified: DateTime::from(ildb.0.modified),
                 name: ildb.0.name.clone(),
                 read_only: false,

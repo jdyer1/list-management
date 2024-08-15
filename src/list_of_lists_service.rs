@@ -102,12 +102,12 @@ pub fn retrieve_lists(
                 rollups,
             });
         }
-        i = i + 1;
+        i += 1;
         if i == end {
             break;
         }
     }
-    return a1;
+    a1
 }
 
 fn sort_list_of_lists(mut a: Vec<ItemList>, sort: SortRequest) -> Vec<ItemList> {
@@ -161,8 +161,8 @@ fn sort_list_of_lists(mut a: Vec<ItemList>, sort: SortRequest) -> Vec<ItemList> 
                             }
                         }
                     }
-                    if ordering.is_some() {
-                        return ordering.unwrap();
+                    if let Some(ret_val) = ordering {
+                        return ret_val;
                     }
                 }
                 one.id.cmp(&two.id)
@@ -173,7 +173,7 @@ fn sort_list_of_lists(mut a: Vec<ItemList>, sort: SortRequest) -> Vec<ItemList> 
             SortKey::Name => one.name.cmp(&two.name),
         }
     });
-    return a;
+    a
 }
 
 fn compute_rollup_values(
@@ -193,7 +193,7 @@ fn compute_rollup_values(
             for (k, v) in &item.attributes {
                 if let ListAttribute::Price(price) = v {
                     let mut ilr_price = price.clone();
-                    ilr_price.amount = ilr_price.amount * qty as f64;
+                    ilr_price.amount *= qty as f64;
 
                     let ilr_o = rollups.get(k);
                     if ilr_o.is_none() {
@@ -221,7 +221,7 @@ fn compute_rollup_values(
         }
         return rollups;
     }
-    return HashMap::with_capacity(0);
+    HashMap::with_capacity(0)
 }
 
 #[cfg(test)]
