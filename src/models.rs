@@ -1,7 +1,7 @@
-use std::hash::{Hash, Hasher};
 use chrono::{DateTime, Utc};
 use diesel::prelude::*;
 use diesel::sqlite::Sqlite;
+use std::hash::{Hash, Hasher};
 
 #[derive(Queryable, Selectable, Identifiable, PartialEq, Eq, Hash, Debug)]
 #[diesel(check_for_backend(Sqlite))]
@@ -9,7 +9,7 @@ use diesel::sqlite::Sqlite;
 pub struct AccountDb {
     pub id: i32,
     pub account_type_id: i32,
-    pub account_source_id: String
+    pub account_source_id: String,
 }
 
 #[derive(Queryable, Selectable, Identifiable, PartialEq, Eq, Hash, Debug)]
@@ -18,7 +18,7 @@ pub struct AccountDb {
 pub struct AccountTypeDb {
     pub id: i32,
     pub name: String,
-    pub source: String
+    pub source: String,
 }
 
 #[derive(Queryable, Selectable, Identifiable, PartialEq, Eq, Hash, Debug)]
@@ -133,7 +133,7 @@ pub struct UserDb {
     pub id: i32,
     pub name: String,
     pub source: String,
-    pub source_id: String
+    pub source_id: String,
 }
 
 #[derive(Identifiable, Selectable, Queryable, Associations, Debug)]
@@ -145,5 +145,3 @@ pub struct UserAccountDb {
     pub user_id: i32,
     pub account_id: i32,
 }
-
-

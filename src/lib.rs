@@ -6,4 +6,3 @@ mod models;
 mod schema;
 mod user_service;
 mod user_storage;
-

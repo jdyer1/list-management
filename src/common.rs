@@ -74,7 +74,6 @@ pub struct ListItem {
     pub source: String,
 }
 
-
 pub trait ListStorage {
     fn all_lists(&self) -> Vec<ItemList>;
 
@@ -86,7 +85,6 @@ pub enum ListType {
     Standard,
     System,
     Transient,
-
 }
 
 pub trait LMContext {
@@ -123,7 +121,6 @@ impl PartialEq<Self> for Price {
     }
 }
 
-
 #[derive(Clone, Debug, EnumString)]
 pub enum SortKey {
     Attribute(String),
@@ -157,16 +154,21 @@ pub struct UserState {
 
 pub trait UserStorage {
     fn create_or_update_user(&mut self, user: User) -> User;
-    fn delete_user(&mut self, user_id: &u64) -> bool ;
-    fn retrieve_user(&self, source: &str, source_id: &str) -> Option<User> ;
+    fn delete_user(&mut self, user_id: &u64) -> bool;
+    fn retrieve_user(&self, source: &str, source_id: &str) -> Option<User>;
     fn retrieve_user_by_id(&self, id: &u64) -> Option<(usize, User)>;
 }
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use crate::common::{ItemList, ListStorage, LMContext, User, UserState, UserStorage};
+    use crate::common::{ItemList, LMContext, ListStorage, User, UserState, UserStorage};
 
-    pub fn context(item_lists: Vec<ItemList>, users: Vec<User>, user: User, state: UserState) -> impl LMContext {
+    pub fn context(
+        item_lists: Vec<ItemList>,
+        users: Vec<User>,
+        user: User,
+        state: UserState,
+    ) -> impl LMContext {
         let my_list_storage = LS {
             ls_all_item_lists: item_lists,
         };
@@ -179,7 +181,7 @@ pub(crate) mod tests {
             all_item_lists: my_list_storage,
             us_user_storage: my_user_storage,
             current_user: user,
-            current_user_state: state
+            current_user_state: state,
         }
     }
 
@@ -188,7 +190,6 @@ pub(crate) mod tests {
         us_user_storage: US,
         current_user: User,
         current_user_state: UserState,
-
     }
 
     impl LMContext for LMC {
@@ -231,7 +232,12 @@ pub(crate) mod tests {
         fn create_or_update_user(&mut self, user: User) -> User {
             let prior_val = self.retrieve_user_by_id(&user.id);
             if prior_val.is_none() {
-                let max_id = self.us_all_users.iter().map(|a| a.id).max().unwrap_or_else(|| 0);
+                let max_id = self
+                    .us_all_users
+                    .iter()
+                    .map(|a| a.id)
+                    .max()
+                    .unwrap_or_else(|| 0);
                 let new_id = max_id + 1;
                 let mut new_obj = user.clone();
                 new_obj.id = new_id;
@@ -276,7 +282,3 @@ pub(crate) mod tests {
         }
     }
 }
-
-
-
-
