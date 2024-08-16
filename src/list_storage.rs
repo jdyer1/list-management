@@ -321,6 +321,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_user_lists() {
+        setup();
         let mut user_ids = (0, 0);
         {
             let c = &mut db::connection();
