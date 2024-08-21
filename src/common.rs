@@ -1,20 +1,14 @@
 use std::collections::HashMap;
 
 use chrono::{DateTime, FixedOffset};
-use currency_rs::Currency;
+use rust_decimal::Decimal;
+use serde::{Deserialize, Serialize};
 use strum_macros::{Display, EnumString};
 
 pub static ATTRIBUTE_QUANTITY: &str = "quantity";
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AccountType {
-    pub id: u64,
-    //
-    pub name: String,
-    pub source: String,
-}
-
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize)]
 pub struct Account {
     pub id: u64,
     //
@@ -22,7 +16,17 @@ pub struct Account {
     pub account_source_id: String,
 }
 
+#[derive(Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize)]
+pub struct AccountType {
+    pub id: u64,
+    //
+    pub name: String,
+    pub source: String,
+}
+
 #[derive(Clone, Debug)]
+#[derive(Serialize, Deserialize)]
 pub struct ItemList {
     pub id: u64,
     //
@@ -40,6 +44,7 @@ pub struct ItemList {
 }
 
 #[derive(Clone, Debug)]
+#[derive(Serialize, Deserialize)]
 pub struct ItemListRollup {
     pub total_amount: Price,
     pub total_lines: u64,
@@ -47,6 +52,7 @@ pub struct ItemListRollup {
 }
 
 #[derive(Clone, Debug, EnumString, PartialEq)]
+#[derive(Serialize, Deserialize)]
 pub enum ListAccess {
     Private,
     Public,
@@ -54,6 +60,7 @@ pub enum ListAccess {
 }
 
 #[derive(Clone, Debug, Display, EnumString, PartialEq)]
+#[derive(Serialize, Deserialize)]
 pub enum ListAttribute {
     Boolean(bool),
     DateTime(DateTime<FixedOffset>),
@@ -64,6 +71,7 @@ pub enum ListAttribute {
 }
 
 #[derive(Clone, Debug)]
+#[derive(Serialize, Deserialize)]
 pub struct ListItem {
     pub id: u64,
     //
@@ -81,6 +89,7 @@ pub trait ListStorage {
 }
 
 #[derive(Clone, Debug, EnumString, PartialEq)]
+#[derive(Serialize, Deserialize)]
 pub enum ListType {
     Standard,
     System,
@@ -95,33 +104,23 @@ pub trait LMContext {
 }
 
 #[derive(Clone, Debug)]
+#[derive(Serialize, Deserialize)]
 pub struct PagingRequest {
     pub start: u64,
     pub rows: u64,
 }
 
-#[derive(Clone, Debug)]
+
+#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Serialize, Deserialize)]
 pub struct Price {
-    pub amount: Currency,
+    pub amount: Decimal,
     pub source: String,
 }
 
-impl Default for Price {
-    fn default() -> Self {
-        Price {
-            amount: Currency::new_string("0.00", None).unwrap(),
-            source: "".to_string(),
-        }
-    }
-}
-
-impl PartialEq<Self> for Price {
-    fn eq(&self, other: &Self) -> bool {
-        self.amount.value() == other.amount.value()
-    }
-}
 
 #[derive(Clone, Debug, EnumString)]
+#[derive(Serialize, Deserialize)]
 pub enum SortKey {
     Attribute(String),
     CreatedDate,
@@ -131,6 +130,7 @@ pub enum SortKey {
 }
 
 #[derive(Clone, Debug)]
+#[derive(Serialize, Deserialize)]
 pub struct SortRequest {
     pub descending: bool,
     pub key: SortKey,
@@ -161,7 +161,7 @@ pub trait UserStorage {
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use crate::common::{ItemList, LMContext, ListStorage, User, UserState, UserStorage};
+    use crate::common::{ItemList, ListStorage, LMContext, User, UserState, UserStorage};
 
     pub fn context(
         item_lists: Vec<ItemList>,

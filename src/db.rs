@@ -1,8 +1,8 @@
 use std::env;
 
 use diesel::prelude::*;
-use diesel::r2d2::Pool;
 use diesel::r2d2::{ConnectionManager, PooledConnection};
+use diesel::r2d2::Pool;
 use dotenvy::dotenv;
 use lazy_static::lazy_static;
 
@@ -32,23 +32,20 @@ fn get_connection_pool() -> Pool<ConnectionManager<SqliteConnection>> {
 }
 
 #[cfg(test)]
-pub(crate) mod tests {
-    use crate::common::{User, UserStorage};
-    use crate::db;
+pub mod tests {
     use chrono::DateTime;
-    use diesel::r2d2::PooledConnection;
-    use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
     use serial_test::serial;
 
+    use crate::db;
     use crate::models::{
-        ItemListAttributeDb, ItemListDb, ItemListDbInsert, ListItemAttributeDb, ListItemDb,
-        ListItemDbInsert,
+        ItemListAttributeDb, ItemListDb, ListItemAttributeDb, ListItemDb
+        ,
     };
     use crate::schema::{
-        account, account_type, item_list, item_list_account, item_list_attribute, list_item,
-        list_item_attribute, user, user_account,
+        item_list, item_list_attribute, list_item,
+        list_item_attribute,
     };
-    use crate::user_storage::DatabaseUserStorage;
+    use crate::test_setup_db::{insert_item_list, insert_list_item, insert_user, setup_db};
 
     use super::*;
 
@@ -56,7 +53,7 @@ pub(crate) mod tests {
     #[serial]
     fn test_item_lists() {
         setup_db();
-        let user_id = insert_user("a", "b");
+        let user_id = insert_user("name","a", "b");
         let c = &mut db::connection();
         let item_list_id_1 = insert_item_list(c, user_id, "Item List One".to_string());
         let item_list_id_2 = insert_item_list(c, user_id, "Item List Two".to_string());
@@ -97,7 +94,7 @@ pub(crate) mod tests {
     #[serial]
     fn test_list_items() {
         setup_db();
-        let user_id = insert_user("a", "b");
+        let user_id = insert_user("name", "a", "b");
         let c = &mut db::connection();
         let item_list_id_1 = insert_item_list(c, user_id, "Item List One".to_string());
         let list_item_id_1 = insert_list_item(c, item_list_id_1, "List Item One".to_string());
@@ -122,7 +119,7 @@ pub(crate) mod tests {
     #[serial]
     fn test_list_item_attributes() {
         setup_db();
-        let user_id = insert_user("a", "b");
+        let user_id = insert_user("name", "a", "b");
         let c = &mut db::connection();
         let item_list_id_1 = insert_item_list(c, user_id, "Item List One".to_string());
         let list_item_id_1 = insert_list_item(c, item_list_id_1, "List Item One".to_string());
@@ -198,7 +195,7 @@ pub(crate) mod tests {
     #[serial]
     fn test_item_list_attributes() {
         setup_db();
-        let user_id = insert_user("a", "b");
+        let user_id = insert_user("name", "a", "b");
         let c = &mut db::connection();
 
         let item_list_id_1 = insert_item_list(c, user_id, "Item List One".to_string());
@@ -269,87 +266,5 @@ pub(crate) mod tests {
         assert!(results[4].bool_val.unwrap());
     }
 
-    pub fn insert_user(source: &str, source_id: &str) -> i32 {
-        DatabaseUserStorage()
-            .create_or_update_user(User {
-                id: 0,
-                name: "".to_string(),
-                source: source.to_string(),
-                source_id: source_id.to_string(),
-                user_accounts: vec![],
-            })
-            .id as i32
-    }
 
-    pub fn insert_item_list(
-        c: &mut PooledConnection<ConnectionManager<SqliteConnection>>,
-        user_id: i32,
-        name1: String,
-    ) -> i32 {
-        let item_list = ItemListDbInsert {
-            deleted: &false,
-            folder: &"default".to_string(),
-            access: &"Public".to_string(),
-            list_type: &"Standard".to_string(),
-            name: &name1,
-            owner_user_id: user_id,
-        };
-        diesel::insert_into(item_list::table)
-            .values(&item_list)
-            .execute(c)
-            .unwrap();
-        item_list::table
-            .select(ItemListDb::as_select())
-            .order(item_list::id.desc())
-            .load(c)
-            .unwrap()[0]
-            .id
-    }
-
-    pub fn insert_list_item(
-        c: &mut PooledConnection<ConnectionManager<SqliteConnection>>,
-        item_list_id: i32,
-        name1: String,
-    ) -> i32 {
-        let list_item = ListItemDbInsert {
-            item_list_id: &item_list_id,
-            name: &name1,
-            source: &"My Source".to_string(),
-        };
-        diesel::insert_into(list_item::table)
-            .values(&list_item)
-            .execute(c)
-            .unwrap();
-        list_item::table
-            .select(ListItemDb::as_select())
-            .order(list_item::id.desc())
-            .load(c)
-            .unwrap()[0]
-            .id
-    }
-
-    fn cleanup_db(c: &mut PooledConnection<ConnectionManager<SqliteConnection>>) {
-        diesel::delete(list_item_attribute::table)
-            .execute(c)
-            .unwrap();
-        diesel::delete(list_item::table).execute(c).unwrap();
-        diesel::delete(item_list_attribute::table)
-            .execute(c)
-            .unwrap();
-        diesel::delete(item_list_account::table).execute(c).unwrap();
-        diesel::delete(item_list::table).execute(c).unwrap();
-        diesel::delete(user_account::table).execute(c).unwrap();
-        diesel::delete(account_type::table).execute(c).unwrap();
-        diesel::delete(account::table).execute(c).unwrap();
-        diesel::delete(user::table).execute(c).unwrap();
-    }
-
-    pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
-
-    pub fn setup_db() {
-        let mut c = connection();
-        c.run_pending_migrations(MIGRATIONS)
-            .expect("Could not run migrations");
-        cleanup_db(&mut c);
-    }
 }

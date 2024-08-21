@@ -146,14 +146,10 @@ impl UserStorage for DatabaseUserStorage {
 }
 
 #[cfg(test)]
-pub(crate) mod tests {
-    use diesel::r2d2::{ConnectionManager, PooledConnection};
-    use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl, SelectableHelper, SqliteConnection};
+pub mod tests {
+    use diesel::{QueryDsl, RunQueryDsl, SelectableHelper};
     use serial_test::serial;
-
-    use crate::models::AccountTypeDb;
-    use crate::schema::account_type;
-
+    use crate::test_setup_db::setup_accounts;
     use super::*;
 
     #[test]
@@ -228,65 +224,5 @@ pub(crate) mod tests {
             .unwrap()
             .len();
         assert_eq!(0, count);
-    }
-
-    pub fn setup_accounts() -> (i32, i32) {
-        db::tests::setup_db();
-        let mut c = &mut db::connection();
-        let at1_id = insert_account_type(
-            &mut c,
-            "account type 1".to_string(),
-            "at source 1".to_string(),
-        );
-        let at2_id = insert_account_type(
-            &mut c,
-            "account type 2".to_string(),
-            "at source 2".to_string(),
-        );
-        let my_a1_id = insert_account(&mut c, at1_id, "at source 1 one".to_string());
-        let my_a2_id = insert_account(&mut c, at2_id, "at source 2 one".to_string());
-        (my_a1_id, my_a2_id)
-    }
-
-    fn insert_account_type(
-        c: &mut PooledConnection<ConnectionManager<SqliteConnection>>,
-        name: String,
-        source: String,
-    ) -> i32 {
-        diesel::insert_into(account_type::table)
-            .values((
-                account_type::name.eq(&name),
-                account_type::source.eq(&source),
-            ))
-            .execute(c)
-            .expect("Could not insert account_type");
-        account_type::table
-            .select(AccountTypeDb::as_select())
-            .filter(account_type::name.eq(&name))
-            .filter(account_type::source.eq(&source))
-            .load(c)
-            .unwrap()[0]
-            .id
-    }
-
-    fn insert_account(
-        c: &mut PooledConnection<ConnectionManager<SqliteConnection>>,
-        account_type_id: i32,
-        source_id: String,
-    ) -> i32 {
-        diesel::insert_into(account::table)
-            .values((
-                account::account_type_id.eq(&account_type_id),
-                account::account_source_id.eq(&source_id),
-            ))
-            .execute(c)
-            .expect("Could not insert account");
-        account::table
-            .select(AccountDb::as_select())
-            .filter(account::account_type_id.eq(&account_type_id))
-            .filter(account::account_source_id.eq(&source_id))
-            .load(c)
-            .unwrap()[0]
-            .id
     }
 }

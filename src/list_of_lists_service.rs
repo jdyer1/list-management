@@ -1,11 +1,10 @@
 use std::cmp::Ordering;
 use std::collections::HashMap;
+use rust_decimal::Decimal;
+use serde::{Deserialize, Serialize};
 
 use crate::common::ListAttribute::DateTime;
-use crate::common::{
-    ItemList, ItemListRollup, LMContext, ListAccess, ListAttribute, ListItem, ListStorage,
-    ListType, PagingRequest, SortKey, SortRequest, ATTRIBUTE_QUANTITY,
-};
+use crate::common::{ItemList, ItemListRollup, LMContext, ListAccess, ListAttribute, ListItem, ListStorage, ListType, PagingRequest, SortKey, SortRequest, ATTRIBUTE_QUANTITY, Price};
 
 pub struct ListSelector {
     pub limit_show_read_only: bool,
@@ -17,6 +16,7 @@ pub struct ListSelector {
     pub limit_name_keywords: Option<String>,
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct ListResult {
     pub list: ItemList,
     pub rollups: HashMap<String, ItemListRollup>,
@@ -147,8 +147,8 @@ fn sort_list_of_lists(mut a: Vec<ItemList>, sort: SortRequest) -> Vec<ItemList> 
                         }
                         ListAttribute::Price(v1) => {
                             if let ListAttribute::Price(v2) = two_attribute_value {
-                                let value1 = v1.amount.value();
-                                let value2 = v2.amount.value();
+                                let value1 = v1.amount;
+                                let value2 = v2.amount;
                                 if value1.min(value2) == value1 {
                                     return Ordering::Less;
                                 }
@@ -192,8 +192,10 @@ fn compute_rollup_values(
             }
             for (k, v) in &item.attributes {
                 if let ListAttribute::Price(price) = v {
-                    let mut ilr_price = price.clone();
-                    ilr_price.amount *= qty as f64;
+                    let ilr_price = Price {
+                        amount: price.amount * Decimal::from(qty),
+                        source: price.source.clone(),
+                    };
 
                     let ilr_o = rollups.get(k);
                     if ilr_o.is_none() {
@@ -206,7 +208,7 @@ fn compute_rollup_values(
                     } else {
                         let ilr = ilr_o.unwrap();
                         let mut price1 = ilr.total_amount.clone();
-                        let currency1 = price1.amount.add(ilr_price.amount.value());
+                        let currency1 = price1.amount + ilr_price.amount;
                         price1.amount = currency1;
 
                         let ilr1 = ItemListRollup {
@@ -227,9 +229,10 @@ fn compute_rollup_values(
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
+    use std::str::FromStr;
 
     use chrono::{DateTime, FixedOffset};
-    use currency_rs::Currency;
+    use rust_decimal::Decimal;
 
     use crate::common::tests::context;
     use crate::common::*;
@@ -289,13 +292,13 @@ mod tests {
         assert_eq!(3, l0r_xyz.total_lines);
         assert_eq!(6, l0r_xyz.total_units);
         assert_eq!("xyz-source", l0r_xyz.total_amount.source);
-        assert_eq!(19.98, l0r_xyz.total_amount.amount.value());
+        assert_eq!(Decimal::from_str("19.98").unwrap(), l0r_xyz.total_amount.amount);
 
         let l0r_qwe = list_0_rollups.get("qwe").unwrap();
         assert_eq!(2, l0r_qwe.total_lines);
         assert_eq!(4, l0r_qwe.total_units);
         assert_eq!("qwe-source", l0r_qwe.total_amount.source);
-        assert_eq!(9.36, l0r_qwe.total_amount.amount.value());
+        assert_eq!(Decimal::from_str("9.36").unwrap(), l0r_qwe.total_amount.amount);
 
         assert_eq!(2, list_1_rollups.len());
 
@@ -303,13 +306,13 @@ mod tests {
         assert_eq!(3, l1r_xyz.total_lines);
         assert_eq!(6, l1r_xyz.total_units);
         assert_eq!("xyz-source", l1r_xyz.total_amount.source);
-        assert_eq!(6.66, l1r_xyz.total_amount.amount.value());
+        assert_eq!(Decimal::from_str("6.66").unwrap(), l1r_xyz.total_amount.amount);
 
         let l1r_qwe = list_1_rollups.get("qwe").unwrap();
         assert_eq!(2, l1r_qwe.total_lines);
         assert_eq!(4, l1r_qwe.total_units);
         assert_eq!("qwe-source", l1r_qwe.total_amount.source);
-        assert_eq!(9.36, l1r_qwe.total_amount.amount.value());
+        assert_eq!(Decimal::from_str("9.36").unwrap(), l1r_qwe.total_amount.amount);
 
         assert_eq!(2, list_2_rollups.len());
     }
@@ -765,7 +768,7 @@ mod tests {
             "my price".to_string(),
             ListAttribute::Price(Price {
                 //ex: 1 becomes 1.21
-                amount: Currency::new_string(&price, None).unwrap(),
+                amount: Decimal::from_str(&price).unwrap(),
                 source: "a-source".to_string(),
             }),
         );
@@ -779,7 +782,7 @@ mod tests {
         list_item_attributes1.insert(
             "xyz".to_string(),
             ListAttribute::Price(Price {
-                amount: Currency::new_string(&price, None).unwrap(),
+                amount: Decimal::from_str(&price).unwrap(),
                 source: "xyz-source".to_string(),
             }),
         );
@@ -788,7 +791,7 @@ mod tests {
         list_item_attributes2.insert(
             "qwe".to_string(),
             ListAttribute::Price(Price {
-                amount: Currency::new_string("2.34", None).unwrap(),
+                amount: Decimal::from_str("2.34").unwrap(),
                 source: "qwe-source".to_string(),
             }),
         );

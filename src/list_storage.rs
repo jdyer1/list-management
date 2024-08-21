@@ -3,9 +3,9 @@ use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
 use chrono::DateTime;
-use currency_rs::Currency;
 use diesel::prelude::*;
 use regex::Regex;
+use rust_decimal::Decimal;
 
 use crate::common::{
     Account, AccountType, ItemList, ListAccess, ListAttribute, ListItem, ListStorage, ListType,
@@ -219,7 +219,7 @@ fn get_lists(lists: Vec<ItemListDb>) -> Vec<ItemList> {
 
 impl Display for Price {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "PRICE: _{} _{}", self.amount.value(), self.source)
+        write!(f, "PRICE: _{} _{}", self.amount, self.source)
     }
 }
 
@@ -227,14 +227,14 @@ fn to_price(str: String) -> Price {
     let re = Regex::new(r"^PRICE[:]\s_([^\s]+)\s_([^s]+)$").unwrap();
     let Some(caps) = re.captures(&str) else {
         return Price {
-            amount: Currency::new_string("0.00", None).unwrap(),
+            amount: Decimal::from_str("0.00").unwrap(),
             source: "".to_string(),
         };
     };
     let amount_str = &caps[1];
     let source = &caps[2];
     Price {
-        amount: Currency::new_string(amount_str, None).unwrap(),
+        amount: Decimal::from_str(amount_str).unwrap(),
         source: source.to_string(),
     }
 }
@@ -259,18 +259,16 @@ fn all_account_types() -> HashMap<i32, AccountType> {
 }
 
 #[cfg(test)]
-mod tests {
-    use currency_rs::Currency;
-
-    use diesel::r2d2::{ConnectionManager, PooledConnection};
-    use diesel::SqliteConnection;
+pub mod tests {
+    
+    
     use serial_test::serial;
 
     use crate::common::ListAttribute;
     use crate::db;
-    use crate::db::tests::insert_user;
     use crate::models::UserDb;
-    use crate::schema::{item_list_account, item_list_attribute, list_item_attribute, user};
+    use crate::schema::user;
+    use crate::test_setup_db::{insert_user, setup_accounts, setup_db, setup_lists};
 
     use super::*;
 
@@ -322,16 +320,15 @@ mod tests {
     #[serial]
     fn test_user_lists() {
         setup();
-        let mut user_ids = (0, 0);
-        {
+        let user_ids = {
             let c = &mut db::connection();
             let users_vec = user::table
                 .select(UserDb::as_select())
                 .order(user::id.asc())
                 .load(c)
                 .unwrap();
-            user_ids = (users_vec[0].id, users_vec[1].id);
-        }
+            (users_vec[0].id, users_vec[1].id)
+        };
         let us: UserState = UserState {
             active_user_accounts: vec![],
             user_id: user_ids.0 as u64,
@@ -357,236 +354,11 @@ mod tests {
     }
 
     fn setup() {
-        db::tests::setup_db();
-        let (a1_id, a2_id) = crate::user_storage::tests::setup_accounts();
-        let user_id_1 = insert_user("source", "source-1");
-        let user_id_2 = insert_user("source", "source-2");
-
-        let c = &mut db::connection();
-
-        let item_list_1_id = db::tests::insert_item_list(c, user_id_1, "Item List One".to_string());
-        insert_item_list_attribute(
-            c,
-            item_list_1_id,
-            "Foo".to_string(),
-            ListAttribute::Text("Bar".to_string()),
-        );
-
-        insert_item_list_account(c, item_list_1_id, a1_id);
-        insert_item_list_account(c, item_list_1_id, a2_id);
-
-        let list_item_1_1_id = db::tests::insert_list_item(c, item_list_1_id, "IL1-1".to_string());
-        insert_list_item_attribute(
-            c,
-            list_item_1_1_id,
-            "USD_US".to_string(),
-            ListAttribute::Price(Price {
-                amount: Currency::new_string("1.23", None).unwrap(),
-                source: "KAU".to_string(),
-            }),
-        );
-        let list_item_1_2_id = db::tests::insert_list_item(c, item_list_1_id, "IL1-2".to_string());
-        insert_list_item_attribute(
-            c,
-            list_item_1_2_id,
-            "USD_US".to_string(),
-            ListAttribute::Price(Price {
-                amount: Currency::new_string("3.45", None).unwrap(),
-                source: "KAU".to_string(),
-            }),
-        );
-
-        let item_list_2_id = db::tests::insert_item_list(c, user_id_2, "Item List Two".to_string());
-        insert_item_list_attribute(
-            c,
-            item_list_2_id,
-            "Number".to_string(),
-            ListAttribute::Integer(1),
-        );
-
-        insert_item_list_account(c, item_list_2_id, a1_id);
-
-        let list_item_2_1_id = db::tests::insert_list_item(c, item_list_2_id, "IL2-1".to_string());
-        insert_list_item_attribute(
-            c,
-            list_item_2_1_id,
-            "Priceless".to_string(),
-            ListAttribute::Boolean(true),
-        );
-        let list_item_2_2_id = db::tests::insert_list_item(c, item_list_2_id, "IL2-2".to_string());
-        insert_list_item_attribute(
-            c,
-            list_item_2_2_id,
-            "Length".to_string(),
-            ListAttribute::Float(7.65),
-        );
+        setup_db();
+        let (a1_id, a2_id) = setup_accounts();
+        let user_id_1 = insert_user("name", "source", "source-1");
+        let user_id_2 = insert_user("name", "source", "source-2");
+        setup_lists(vec![a1_id, a2_id], vec![a1_id], user_id_1, user_id_2);
     }
 
-    fn insert_list_item_attribute(
-        c: &mut PooledConnection<ConnectionManager<SqliteConnection>>,
-        list_item_id: i32,
-        name: String,
-        attr: ListAttribute,
-    ) {
-        match attr {
-            ListAttribute::Boolean(b) => {
-                diesel::insert_into(list_item_attribute::table)
-                    .values((
-                        list_item_attribute::list_item_id.eq(&list_item_id),
-                        list_item_attribute::attribute_type.eq("Boolean"),
-                        list_item_attribute::name.eq(name),
-                        list_item_attribute::bool_val.eq(b),
-                    ))
-                    .execute(c)
-                    .expect("Could not insert boolean");
-            }
-            ListAttribute::DateTime(dt) => {
-                diesel::insert_into(list_item_attribute::table)
-                    .values((
-                        list_item_attribute::list_item_id.eq(&list_item_id),
-                        list_item_attribute::attribute_type.eq("DateTime"),
-                        list_item_attribute::name.eq(name),
-                        list_item_attribute::timestamp_val.eq(dt),
-                    ))
-                    .execute(c)
-                    .expect("Could not insert DateTime");
-            }
-            ListAttribute::Float(f) => {
-                diesel::insert_into(list_item_attribute::table)
-                    .values((
-                        list_item_attribute::list_item_id.eq(&list_item_id),
-                        list_item_attribute::attribute_type.eq("Float"),
-                        list_item_attribute::name.eq(name),
-                        list_item_attribute::float_val.eq(f as f32),
-                    ))
-                    .execute(c)
-                    .expect("Could not insert float");
-            }
-            ListAttribute::Integer(i) => {
-                diesel::insert_into(list_item_attribute::table)
-                    .values((
-                        list_item_attribute::list_item_id.eq(&list_item_id),
-                        list_item_attribute::attribute_type.eq("Integer"),
-                        list_item_attribute::name.eq(name),
-                        list_item_attribute::integer_val.eq(i as i32),
-                    ))
-                    .execute(c)
-                    .expect("Could not insert integer");
-            }
-            ListAttribute::Price(p) => {
-                let str = format!("{}", p);
-                diesel::insert_into(list_item_attribute::table)
-                    .values((
-                        list_item_attribute::list_item_id.eq(&list_item_id),
-                        list_item_attribute::attribute_type.eq("Price"),
-                        list_item_attribute::name.eq(name),
-                        list_item_attribute::text_val.eq(str),
-                    ))
-                    .execute(c)
-                    .expect("Could not insert price");
-            }
-            ListAttribute::Text(s) => {
-                diesel::insert_into(list_item_attribute::table)
-                    .values((
-                        list_item_attribute::list_item_id.eq(&list_item_id),
-                        list_item_attribute::attribute_type.eq("Text"),
-                        list_item_attribute::name.eq(name),
-                        list_item_attribute::text_val.eq(s),
-                    ))
-                    .execute(c)
-                    .expect("Could not insert text");
-            }
-        }
-    }
-
-    fn insert_item_list_attribute(
-        c: &mut PooledConnection<ConnectionManager<SqliteConnection>>,
-        item_list_id: i32,
-        name: String,
-        attr: ListAttribute,
-    ) {
-        match attr {
-            ListAttribute::Boolean(b) => {
-                diesel::insert_into(item_list_attribute::table)
-                    .values((
-                        item_list_attribute::item_list_id.eq(&item_list_id),
-                        item_list_attribute::attribute_type.eq("Boolean"),
-                        item_list_attribute::name.eq(name),
-                        item_list_attribute::bool_val.eq(b),
-                    ))
-                    .execute(c)
-                    .expect("Could not insert boolean");
-            }
-            ListAttribute::DateTime(dt) => {
-                diesel::insert_into(item_list_attribute::table)
-                    .values((
-                        item_list_attribute::item_list_id.eq(&item_list_id),
-                        item_list_attribute::attribute_type.eq("DateTime"),
-                        item_list_attribute::name.eq(name),
-                        item_list_attribute::timestamp_val.eq(dt),
-                    ))
-                    .execute(c)
-                    .expect("Could not insert DateTime");
-            }
-            ListAttribute::Float(f) => {
-                diesel::insert_into(item_list_attribute::table)
-                    .values((
-                        item_list_attribute::item_list_id.eq(&item_list_id),
-                        item_list_attribute::attribute_type.eq("Float"),
-                        item_list_attribute::name.eq(name),
-                        item_list_attribute::float_val.eq(f as f32),
-                    ))
-                    .execute(c)
-                    .expect("Could not insert float");
-            }
-            ListAttribute::Integer(i) => {
-                diesel::insert_into(item_list_attribute::table)
-                    .values((
-                        item_list_attribute::item_list_id.eq(&item_list_id),
-                        item_list_attribute::attribute_type.eq("Integer"),
-                        item_list_attribute::name.eq(name),
-                        item_list_attribute::integer_val.eq(i as i32),
-                    ))
-                    .execute(c)
-                    .expect("Could not insert integer");
-            }
-            ListAttribute::Price(p) => {
-                let str = format!("{}", p);
-                diesel::insert_into(item_list_attribute::table)
-                    .values((
-                        item_list_attribute::item_list_id.eq(&item_list_id),
-                        item_list_attribute::attribute_type.eq("Price"),
-                        item_list_attribute::name.eq(name),
-                        item_list_attribute::text_val.eq(str),
-                    ))
-                    .execute(c)
-                    .expect("Could not insert price");
-            }
-            ListAttribute::Text(s) => {
-                diesel::insert_into(item_list_attribute::table)
-                    .values((
-                        item_list_attribute::item_list_id.eq(&item_list_id),
-                        item_list_attribute::attribute_type.eq("Text"),
-                        item_list_attribute::name.eq(name),
-                        item_list_attribute::text_val.eq(s),
-                    ))
-                    .execute(c)
-                    .expect("Could not insert text");
-            }
-        }
-    }
-
-    fn insert_item_list_account(
-        c: &mut PooledConnection<ConnectionManager<SqliteConnection>>,
-        item_list_id: i32,
-        account_id: i32,
-    ) {
-        diesel::insert_into(item_list_account::table)
-            .values((
-                item_list_account::item_list_id.eq(&item_list_id),
-                item_list_account::account_id.eq(&account_id),
-            ))
-            .execute(c)
-            .expect("Could not insert item_list_account");
-    }
 }
