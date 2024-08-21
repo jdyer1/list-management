@@ -6,15 +6,20 @@ use diesel::r2d2::Pool;
 use dotenvy::dotenv;
 use lazy_static::lazy_static;
 
-lazy_static! {
-    static ref POOL: Pool<ConnectionManager<SqliteConnection>> = get_connection_pool();
+#[derive(diesel::MultiConnection)]
+pub enum MultiConnection {
+    Sqlite(diesel::SqliteConnection),
 }
 
-pub fn connection() -> PooledConnection<ConnectionManager<SqliteConnection>> {
+lazy_static! {
+    static ref POOL: Pool<ConnectionManager<MultiConnection>> = get_connection_pool();
+}
+
+pub fn connection() -> PooledConnection<ConnectionManager<MultiConnection>> {
     POOL.get().unwrap()
 }
 
-fn get_connection_pool() -> Pool<ConnectionManager<SqliteConnection>> {
+fn get_connection_pool() -> Pool<ConnectionManager<MultiConnection>> {
     dotenv().ok();
 
     let url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
@@ -23,7 +28,7 @@ fn get_connection_pool() -> Pool<ConnectionManager<SqliteConnection>> {
         .parse()
         .expect("DATABASE_POOL_SIZE must be a positive integer");
 
-    let manager = ConnectionManager::<SqliteConnection>::new(url);
+    let manager = ConnectionManager::<MultiConnection>::new(url);
     Pool::builder()
         .max_size(pool_size)
         .test_on_check_out(true)
@@ -33,7 +38,7 @@ fn get_connection_pool() -> Pool<ConnectionManager<SqliteConnection>> {
 
 #[cfg(test)]
 pub mod tests {
-    use chrono::DateTime;
+    use chrono::NaiveDate;
     use serial_test::serial;
 
     use crate::db;
@@ -123,7 +128,7 @@ pub mod tests {
         let c = &mut db::connection();
         let item_list_id_1 = insert_item_list(c, user_id, "Item List One".to_string());
         let list_item_id_1 = insert_list_item(c, item_list_id_1, "List Item One".to_string());
-        let july_19_2024 = DateTime::parse_from_rfc3339("2024-07-19T00:00:00-00:00").unwrap();
+        let july_19_2024 = NaiveDate::from_ymd_opt(2024, 7, 19).unwrap().and_hms_opt(0,0,0).unwrap();
         diesel::insert_into(list_item_attribute::table)
             .values((
                 list_item_attribute::list_item_id.eq(&list_item_id_1),
@@ -199,7 +204,7 @@ pub mod tests {
         let c = &mut db::connection();
 
         let item_list_id_1 = insert_item_list(c, user_id, "Item List One".to_string());
-        let july_20_2024 = DateTime::parse_from_rfc3339("2024-07-20T00:00:00-00:00").unwrap();
+        let july_20_2024 = NaiveDate::from_ymd_opt(2024, 7, 20).unwrap().and_hms_opt(0,0,0).unwrap();
         diesel::insert_into(item_list_attribute::table)
             .values((
                 item_list_attribute::item_list_id.eq(&item_list_id_1),

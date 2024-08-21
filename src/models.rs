@@ -1,10 +1,8 @@
-use chrono::{DateTime, Utc};
+use chrono::{NaiveDateTime};
 use diesel::prelude::*;
-use diesel::sqlite::Sqlite;
 use std::hash::{Hash, Hasher};
 
 #[derive(Queryable, Selectable, Identifiable, PartialEq, Eq, Hash, Debug)]
-#[diesel(check_for_backend(Sqlite))]
 #[diesel(table_name = crate::schema::account)]
 pub struct AccountDb {
     pub id: i32,
@@ -13,7 +11,6 @@ pub struct AccountDb {
 }
 
 #[derive(Queryable, Selectable, Identifiable, PartialEq, Eq, Hash, Debug)]
-#[diesel(check_for_backend(Sqlite))]
 #[diesel(table_name = crate::schema::account_type)]
 pub struct AccountTypeDb {
     pub id: i32,
@@ -22,17 +19,16 @@ pub struct AccountTypeDb {
 }
 
 #[derive(Queryable, Selectable, Identifiable, PartialEq, Eq, Hash, Debug)]
-#[diesel(check_for_backend(Sqlite))]
 #[diesel(table_name = crate::schema::item_list)]
 pub struct ItemListDb {
     pub id: i32,
     pub access: String,
-    pub created: DateTime<Utc>,
+    pub created: NaiveDateTime,
     pub deleted: bool,
     pub folder: String,
     pub list_type: String,
     pub name: String,
-    pub modified: DateTime<Utc>,
+    pub modified: NaiveDateTime,
     pub owner_user_id: i32,
 }
 
@@ -58,7 +54,6 @@ pub struct ItemListAccountDb {
 }
 
 #[derive(Queryable, Selectable, Identifiable, Associations, PartialEq, Debug)]
-#[diesel(check_for_backend(Sqlite))]
 #[diesel(table_name = crate::schema::item_list_attribute)]
 #[diesel(belongs_to(ItemListDb, foreign_key = item_list_id))]
 pub struct ItemListAttributeDb {
@@ -67,7 +62,7 @@ pub struct ItemListAttributeDb {
     pub name: String,
     pub attribute_type: String,
     pub bool_val: Option<bool>,
-    pub timestamp_val: Option<DateTime<Utc>>,
+    pub timestamp_val: Option<NaiveDateTime>,
     pub float_val: Option<f32>,
     pub integer_val: Option<i32>,
     pub text_val: Option<String>,
@@ -82,15 +77,14 @@ impl Hash for ItemListAttributeDb {
 }
 
 #[derive(Queryable, Selectable, Identifiable, Associations, PartialEq, Eq, Hash, Debug)]
-#[diesel(check_for_backend(Sqlite))]
 #[diesel(table_name = crate::schema::list_item)]
 #[diesel(belongs_to(ItemListDb, foreign_key = item_list_id))]
 pub struct ListItemDb {
     pub id: i32,
     pub item_list_id: i32,
-    pub created: DateTime<Utc>,
+    pub created: NaiveDateTime,
     pub name: String,
-    pub modified: DateTime<Utc>,
+    pub modified: NaiveDateTime,
     pub source: String,
 }
 
@@ -103,7 +97,6 @@ pub struct ListItemDbInsert<'a> {
 }
 
 #[derive(Queryable, Selectable, Identifiable, Associations, PartialEq, Debug)]
-#[diesel(check_for_backend(Sqlite))]
 #[diesel(table_name = crate::schema::list_item_attribute)]
 #[diesel(belongs_to(ListItemDb, foreign_key = list_item_id))]
 pub struct ListItemAttributeDb {
@@ -112,7 +105,7 @@ pub struct ListItemAttributeDb {
     pub name: String,
     pub attribute_type: String,
     pub bool_val: Option<bool>,
-    pub timestamp_val: Option<DateTime<Utc>>,
+    pub timestamp_val: Option<NaiveDateTime>,
     pub float_val: Option<f32>,
     pub integer_val: Option<i32>,
     pub text_val: Option<String>,
@@ -127,7 +120,6 @@ impl Hash for ListItemAttributeDb {
 }
 
 #[derive(Queryable, Selectable, Identifiable, PartialEq, Debug)]
-#[diesel(check_for_backend(Sqlite))]
 #[diesel(table_name = crate::schema::user)]
 pub struct UserDb {
     pub id: i32,

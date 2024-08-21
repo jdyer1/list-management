@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
-use chrono::DateTime;
+use chrono::{NaiveDateTime, Utc};
 use diesel::prelude::*;
 use regex::Regex;
 use rust_decimal::Decimal;
@@ -16,10 +16,10 @@ use crate::models::{
     AccountDb, AccountTypeDb, ItemListAccountDb, ItemListAttributeDb, ItemListDb,
     ListItemAttributeDb, ListItemDb,
 };
-use crate::schema::item_list::owner_user_id;
 use crate::schema::{
     account, account_type, item_list, item_list_attribute, list_item, list_item_attribute,
 };
+use crate::schema::item_list::owner_user_id;
 
 pub struct DatabaseListStorage();
 
@@ -115,10 +115,10 @@ fn get_lists(lists: Vec<ItemListDb>) -> Vec<ItemList> {
             .unwrap_or_else(|_| ListAttribute::Text("".to_string()));
         let lia_attr: ListAttribute = match lia_attr {
             ListAttribute::Boolean(_) => ListAttribute::Boolean(liadb.bool_val.unwrap_or(false)),
-            ListAttribute::DateTime(_) => ListAttribute::DateTime(DateTime::from(
+            ListAttribute::DateTime(_) => ListAttribute::DateTime(NaiveDateTime::from(
                 liadb
                     .timestamp_val
-                    .unwrap_or_else(|| DateTime::from(chrono::offset::Local::now())),
+                    .unwrap_or(Utc::now().naive_utc()),
             )),
             ListAttribute::Float(_) => ListAttribute::Float(liadb.float_val.unwrap_or(0f32) as f64),
             ListAttribute::Integer(_) => {
@@ -142,10 +142,10 @@ fn get_lists(lists: Vec<ItemListDb>) -> Vec<ItemList> {
             .unwrap_or_else(|_| ListAttribute::Text("".to_string()));
         let ila_attr: ListAttribute = match ila_attr {
             ListAttribute::Boolean(_) => ListAttribute::Boolean(iladb.bool_val.unwrap_or(false)),
-            ListAttribute::DateTime(_) => ListAttribute::DateTime(DateTime::from(
+            ListAttribute::DateTime(_) => ListAttribute::DateTime(NaiveDateTime::from(
                 iladb
                     .timestamp_val
-                    .unwrap_or(DateTime::from(chrono::offset::Local::now())),
+                    .unwrap_or(Utc::now().naive_utc()),
             )),
             ListAttribute::Float(_) => ListAttribute::Float(iladb.float_val.unwrap_or(0f32) as f64),
             ListAttribute::Integer(_) => {
@@ -183,7 +183,7 @@ fn get_lists(lists: Vec<ItemListDb>) -> Vec<ItemList> {
             ItemList {
                 id: il_id as u64,
                 attributes: list_attr_map.to_owned(),
-                created: DateTime::from(ildb.0.created),
+                created: NaiveDateTime::from(ildb.0.created),
                 deleted: ildb.0.deleted,
                 folder: ildb.0.folder.clone(),
                 items: ildb
@@ -199,8 +199,8 @@ fn get_lists(lists: Vec<ItemListDb>) -> Vec<ItemList> {
                         ListItem {
                             id: lidb.id as u64,
                             attributes: item_attr_map.to_owned(),
-                            created: DateTime::from(lidb.created),
-                            modified: DateTime::from(lidb.modified),
+                            created: NaiveDateTime::from(lidb.created),
+                            modified: NaiveDateTime::from(lidb.modified),
                             name: lidb.name.clone(),
                             source: lidb.source.clone(),
                         }
@@ -209,7 +209,7 @@ fn get_lists(lists: Vec<ItemListDb>) -> Vec<ItemList> {
                 list_access: ListAccess::from_str(&ildb.0.access).unwrap_or(ListAccess::Public),
                 list_accounts: accounts_per_lists.get(&il_id).unwrap_or(&vec![]).to_owned(),
                 list_type: ListType::from_str(&ildb.0.list_type).unwrap_or(ListType::Standard),
-                modified: DateTime::from(ildb.0.modified),
+                modified: NaiveDateTime::from(ildb.0.modified),
                 name: ildb.0.name.clone(),
                 read_only: false,
             }
@@ -260,8 +260,6 @@ fn all_account_types() -> HashMap<i32, AccountType> {
 
 #[cfg(test)]
 pub mod tests {
-    
-    
     use serial_test::serial;
 
     use crate::common::ListAttribute;

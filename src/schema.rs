@@ -18,13 +18,13 @@ diesel::table! {
     item_list (id) {
         id -> Integer,
         owner_user_id -> Integer,
-        created -> TimestamptzSqlite,
+        created -> Timestamp,
         deleted -> Bool,
         folder -> Text,
         access -> Text,
         list_type -> Text,
         name -> Text,
-        modified -> TimestamptzSqlite,
+        modified -> Timestamp,
     }
 }
 
@@ -42,7 +42,7 @@ diesel::table! {
         name -> Text,
         #[sql_name = "type"] attribute_type -> Text,
         bool_val -> Nullable<Bool>,
-        timestamp_val -> Nullable<TimestamptzSqlite>,
+        timestamp_val -> Nullable<Timestamp>,
         float_val -> Nullable<Float>,
         integer_val -> Nullable<Integer>,
         text_val -> Nullable<Text>,
@@ -53,9 +53,9 @@ diesel::table! {
     list_item (id) {
         id -> Integer,
         item_list_id -> Integer,
-        created -> TimestamptzSqlite,
+        created -> Timestamp,
         name -> Text,
-        modified -> TimestamptzSqlite,
+        modified -> Timestamp,
         source -> Text,
     }
 }
@@ -67,7 +67,7 @@ diesel::table! {
         name -> Text,
         #[sql_name = "type"] attribute_type -> Text,
         bool_val -> Nullable<Bool>,
-        timestamp_val -> Nullable<TimestamptzSqlite>,
+        timestamp_val -> Nullable<Timestamp>,
         float_val -> Nullable<Float>,
         integer_val -> Nullable<Integer>,
         text_val -> Nullable<Text>,

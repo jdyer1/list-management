@@ -2,9 +2,9 @@ CREATE TABLE `list_item`
 (
     `id`            INTEGER           NOT NULL PRIMARY KEY,
     `item_list_id`  INTEGER           NOT NULL,
-    `created`       TIMESTAMPTZSQLITE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `created`       VARCHAR           NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `name`          TEXT              NOT NULL,
-    `modified`      TIMESTAMPTZSQLITE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `modified`      VARCHAR           NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `source`        TEXT              NOT NULL
 );
 
@@ -15,7 +15,7 @@ CREATE TABLE `list_item_attribute`
     `name`          TEXT              NOT NULL,
     `type`          TEXT              NOT NULL,
     `bool_val`      BOOL,
-    `timestamp_val` TIMESTAMPTZSQLITE,
+    `timestamp_val` VARCHAR,
     `float_val`     REAL,
     `integer_val`   INTEGER,
     `text_val`      TEXT

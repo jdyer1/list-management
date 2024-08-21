@@ -1,17 +1,18 @@
 use std::str::FromStr;
+
+use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl, SelectableHelper, };
 use diesel::r2d2::{ConnectionManager, PooledConnection};
-use diesel::{SqliteConnection, ExpressionMethods, QueryDsl, RunQueryDsl, SelectableHelper, };
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use rust_decimal::Decimal;
+
 use crate::common::{ListAttribute, Price, User, UserStorage};
 use crate::db;
-use crate::db::connection;
+use crate::db::{connection, MultiConnection};
 use crate::models::{AccountDb, AccountTypeDb, ItemListDb, ItemListDbInsert, ListItemDb, ListItemDbInsert};
 use crate::schema::{account, account_type, item_list, item_list_account, item_list_attribute, list_item, list_item_attribute, user, user_account};
 use crate::user_storage::DatabaseUserStorage;
 
-
-fn cleanup_db(c: &mut PooledConnection<ConnectionManager<SqliteConnection>>) {
+fn cleanup_db(c: &mut PooledConnection<ConnectionManager<MultiConnection>>) {
     diesel::delete(list_item_attribute::table)
         .execute(c)
         .unwrap();
@@ -157,7 +158,7 @@ pub fn setup_lists(item_list_1_account_ids: Vec<i32>, item_list_2_account_ids: V
 }
 
 fn insert_list_item_attribute(
-    c: &mut PooledConnection<ConnectionManager<SqliteConnection>>,
+    c: &mut PooledConnection<ConnectionManager<MultiConnection>>,
     list_item_id: i32,
     name: String,
     attr: ListAttribute,
@@ -234,7 +235,7 @@ fn insert_list_item_attribute(
 }
 
 fn insert_item_list_attribute(
-    c: &mut PooledConnection<ConnectionManager<SqliteConnection>>,
+    c: &mut PooledConnection<ConnectionManager<MultiConnection>>,
     item_list_id: i32,
     name: String,
     attr: ListAttribute,
@@ -311,7 +312,7 @@ fn insert_item_list_attribute(
 }
 
 fn insert_item_list_account(
-    c: &mut PooledConnection<ConnectionManager<SqliteConnection>>,
+    c: &mut PooledConnection<ConnectionManager<MultiConnection>>,
     item_list_id: i32,
     account_id: i32,
 ) {
@@ -337,7 +338,7 @@ pub fn insert_user(name: &str, source: &str, source_id: &str) -> i32 {
 }
 
 pub fn insert_item_list(
-    c: &mut PooledConnection<ConnectionManager<SqliteConnection>>,
+    c: &mut PooledConnection<ConnectionManager<MultiConnection>>,
     user_id: i32,
     name1: String,
 ) -> i32 {
@@ -362,7 +363,7 @@ pub fn insert_item_list(
 }
 
 pub fn insert_list_item(
-    c: &mut PooledConnection<ConnectionManager<SqliteConnection>>,
+    c: &mut PooledConnection<ConnectionManager<MultiConnection>>,
     item_list_id: i32,
     name1: String,
 ) -> i32 {

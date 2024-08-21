@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use chrono::{DateTime, FixedOffset};
+use chrono::{NaiveDateTime};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use strum_macros::{Display, EnumString};
@@ -31,14 +31,14 @@ pub struct ItemList {
     pub id: u64,
     //
     pub attributes: HashMap<String, ListAttribute>,
-    pub created: DateTime<FixedOffset>,
+    pub created: NaiveDateTime,
     pub deleted: bool,
     pub folder: String,
     pub items: Vec<ListItem>,
     pub list_access: ListAccess,
     pub list_accounts: Vec<Account>,
     pub list_type: ListType,
-    pub modified: DateTime<FixedOffset>,
+    pub modified: NaiveDateTime,
     pub name: String,
     pub read_only: bool,
 }
@@ -63,7 +63,7 @@ pub enum ListAccess {
 #[derive(Serialize, Deserialize)]
 pub enum ListAttribute {
     Boolean(bool),
-    DateTime(DateTime<FixedOffset>),
+    DateTime(NaiveDateTime),
     Float(f64),
     Integer(i64),
     Price(Price),
@@ -76,8 +76,8 @@ pub struct ListItem {
     pub id: u64,
     //
     pub attributes: HashMap<String, ListAttribute>,
-    pub created: DateTime<FixedOffset>,
-    pub modified: DateTime<FixedOffset>,
+    pub created: NaiveDateTime,
+    pub modified: NaiveDateTime,
     pub name: String,
     pub source: String,
 }

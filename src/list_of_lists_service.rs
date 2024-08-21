@@ -1,10 +1,11 @@
 use std::cmp::Ordering;
 use std::collections::HashMap;
+
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
+use crate::common::{ATTRIBUTE_QUANTITY, ItemList, ItemListRollup, ListAccess, ListAttribute, ListItem, ListStorage, ListType, LMContext, PagingRequest, Price, SortKey, SortRequest};
 use crate::common::ListAttribute::DateTime;
-use crate::common::{ItemList, ItemListRollup, LMContext, ListAccess, ListAttribute, ListItem, ListStorage, ListType, PagingRequest, SortKey, SortRequest, ATTRIBUTE_QUANTITY, Price};
 
 pub struct ListSelector {
     pub limit_show_read_only: bool,
@@ -231,11 +232,11 @@ mod tests {
     use std::collections::HashMap;
     use std::str::FromStr;
 
-    use chrono::{DateTime, FixedOffset};
+    use chrono::{NaiveDate, NaiveDateTime};
     use rust_decimal::Decimal;
 
-    use crate::common::tests::context;
     use crate::common::*;
+    use crate::common::tests::context;
 
     use super::*;
 
@@ -752,8 +753,8 @@ mod tests {
         read_only: bool,
         list_access: ListAccess,
         list_type: ListType,
-        created: DateTime<FixedOffset>,
-        modified: DateTime<FixedOffset>,
+        created: NaiveDateTime,
+        modified: NaiveDateTime,
         price: String,
     ) -> ItemList {
         let mut attributes: HashMap<String, ListAttribute> = HashMap::new();
@@ -849,9 +850,9 @@ mod tests {
     }
 
     fn item_lists() -> Vec<ItemList> {
-        let d1 = DateTime::parse_from_rfc3339("2024-07-19T00:00:00-00:00").unwrap();
-        let d2 = DateTime::parse_from_rfc3339("2024-07-20T00:00:00-00:00").unwrap();
-        let d3 = DateTime::parse_from_rfc3339("2024-07-21T00:00:00-00:00").unwrap();
+        let d1 = NaiveDate::from_ymd_opt(2024, 7, 19).unwrap().and_hms_opt(0,0,0).unwrap();
+        let d2 = NaiveDate::from_ymd_opt(2024, 7, 20).unwrap().and_hms_opt(0,0,0).unwrap();
+        let d3 = NaiveDate::from_ymd_opt(2024, 7, 21).unwrap().and_hms_opt(0,0,0).unwrap();
 
         vec![
             item_list(
