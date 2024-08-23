@@ -266,7 +266,7 @@ pub mod tests {
     use crate::db;
     use crate::models::UserDb;
     use crate::schema::user;
-    use crate::test_setup_db::{insert_user, setup_accounts, setup_db, setup_lists};
+    use crate::test_helpers::{insert_user, setup_accounts, setup_db, setup_lists};
 
     use super::*;
 

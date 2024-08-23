@@ -1,16 +1,34 @@
+use std::env;
 use std::str::FromStr;
 
-use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl, SelectableHelper, };
+use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl, SelectableHelper};
 use diesel::r2d2::{ConnectionManager, PooledConnection};
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+use dotenvy::dotenv;
 use rust_decimal::Decimal;
+use tracing::dispatcher::set_global_default;
+use tracing_log::LogTracer;
 
 use crate::common::{ListAttribute, Price, User, UserStorage};
 use crate::db;
 use crate::db::{connection, MultiConnection};
+use crate::helpers::tracing_subscriber;
 use crate::models::{AccountDb, AccountTypeDb, ItemListDb, ItemListDbInsert, ListItemDb, ListItemDbInsert};
 use crate::schema::{account, account_type, item_list, item_list_account, item_list_attribute, list_item, list_item_attribute, user, user_account};
 use crate::user_storage::DatabaseUserStorage;
+
+pub fn setup_logging() {
+    match LogTracer::init() {
+        Ok(_) => {
+            dotenv().ok();
+            let log_level = env::var("LOG_LEVEL").unwrap_or("debug".to_string());
+            set_global_default(tracing_subscriber(log_level, std::io::stdout).into()).expect("Failed to set subscriber");
+        }
+        Err(_) => {
+            // ignore, log tracer was already initalized.
+        }
+    }
+}
 
 fn cleanup_db(c: &mut PooledConnection<ConnectionManager<MultiConnection>>) {
     diesel::delete(list_item_attribute::table)
@@ -36,6 +54,7 @@ pub fn setup_db() {
         .expect("Could not run migrations");
     cleanup_db(&mut c);
 }
+
 pub fn setup_accounts() -> (i32, i32) {
     setup_db();
     let at1_id = insert_account_type(

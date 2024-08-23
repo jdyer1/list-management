@@ -1,10 +1,11 @@
 use actix_web::{App, test};
 use actix_web::http::StatusCode;
+use tracing_actix_web::TracingLogger;
+
+use list_management::common::ListAccess;
 use list_management::list_of_lists_service::ListResult;
 use list_management::route_config;
-use list_management::common::ListAccess;
-use list_management::test_setup_db::{insert_account, insert_account_type, insert_user, setup_db, setup_lists};
-
+use list_management::test_helpers::{insert_account, insert_account_type, insert_user, setup_db, setup_lists, setup_logging};
 
 #[actix_web::test]
 async fn test_list_of_lists() {
@@ -12,6 +13,7 @@ async fn test_list_of_lists() {
 
     let app = test::init_service(
         App::new()
+            .wrap(TracingLogger::default())
             .configure(route_config::config)
     ).await;
 
@@ -29,12 +31,13 @@ async fn test_list_of_lists() {
 }
 
 fn setup() -> i32 {
+    setup_logging();
     setup_db();
-    let at1_id =  insert_account_type(
+    let at1_id = insert_account_type(
         "at1".to_string(),
         "ats1".to_string(),
     );
-    let a1_id =  insert_account(at1_id, "as1".to_string());
+    let a1_id = insert_account(at1_id, "as1".to_string());
     let u1_id = insert_user("User One", "s1", "s1-1");
     setup_lists(vec![a1_id], vec![a1_id], u1_id, u1_id);
     u1_id

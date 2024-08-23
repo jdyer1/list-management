@@ -3,10 +3,12 @@ use std::collections::HashMap;
 
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
+use tracing::info;
 
 use crate::common::{ATTRIBUTE_QUANTITY, ItemList, ItemListRollup, ListAccess, ListAttribute, ListItem, ListStorage, ListType, LMContext, PagingRequest, Price, SortKey, SortRequest};
 use crate::common::ListAttribute::DateTime;
 
+#[derive(Debug)]
 pub struct ListSelector {
     pub limit_show_read_only: bool,
     pub limit_list_types: Vec<ListType>,
@@ -108,6 +110,7 @@ pub fn retrieve_lists(
             break;
         }
     }
+    info!("Returning {} list results for {:?} with {:?}", a1.len(), selector, paging);
     a1
 }
 

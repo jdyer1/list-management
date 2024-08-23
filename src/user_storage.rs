@@ -149,7 +149,7 @@ impl UserStorage for DatabaseUserStorage {
 pub mod tests {
     use diesel::{QueryDsl, RunQueryDsl, SelectableHelper};
     use serial_test::serial;
-    use crate::test_setup_db::setup_accounts;
+    use crate::test_helpers::setup_accounts;
     use super::*;
 
     #[test]

@@ -50,7 +50,7 @@ pub mod tests {
         item_list, item_list_attribute, list_item,
         list_item_attribute,
     };
-    use crate::test_setup_db::{insert_item_list, insert_list_item, insert_user, setup_db};
+    use crate::test_helpers::{insert_item_list, insert_list_item, insert_user, setup_db};
 
     use super::*;
 
