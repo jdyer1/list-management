@@ -24,6 +24,6 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .wrap(TracingLogger::default())
             .configure(route_config::config)
-    }).bind((host.clone(), port)).unwrap().run().await;
+    }).bind((host, port)).unwrap().run().await;
     Ok(())
 }
