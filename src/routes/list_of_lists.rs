@@ -22,6 +22,7 @@ pub async fn list_of_lists(req: HttpRequest) -> HttpResponse {
         limit_show_not_deleted: true,
         limit_in_folders: vec![],
         limit_name_keywords: None,
+        limit_list_ids: vec![],
     };
 
     let paging = PagingRequest {

@@ -17,6 +17,7 @@ pub struct ListSelector {
     pub limit_show_not_deleted: bool,
     pub limit_in_folders: Vec<String>,
     pub limit_name_keywords: Option<String>,
+    pub limit_list_ids: Vec<u64>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -54,13 +55,16 @@ pub fn retrieve_lists(
         include = include && (selector.limit_show_read_only || !item_list.read_only);
         include = include
             && (selector.limit_list_access.is_empty()
-                || selector.limit_list_access.contains(&item_list.list_access));
+            || selector.limit_list_access.contains(&item_list.list_access));
         include = include
             && (selector.limit_list_types.is_empty()
-                || selector.limit_list_types.contains(&item_list.list_type));
+            || selector.limit_list_types.contains(&item_list.list_type));
         include = include
             && (selector.limit_in_folders.is_empty()
-                || selector.limit_in_folders.contains(&item_list.folder));
+            || selector.limit_in_folders.contains(&item_list.folder));
+        include = include
+            && (selector.limit_list_ids.is_empty()
+            || selector.limit_list_ids.contains(&item_list.id));
         if include && selector.limit_name_keywords.is_some() {
             let name_tokens: Vec<String> = item_list
                 .name
@@ -748,6 +752,23 @@ mod tests {
         assert_eq!(2, results[0].list.id);
     }
 
+    #[test]
+    fn test_retrieve_lists_by_list_id() {
+        let mut selector = selector();
+        selector.limit_list_ids = vec![1, 2];
+        let results = retrieve_lists(
+            context(item_lists(), users(), user(), state()),
+            selector,
+            paging(0, 10),
+            sort(SortKey::Id, false),
+            true,
+            true,
+        );
+        assert_eq!(2, results.len());
+        assert_eq!(1, results[0].list.id);
+        assert_eq!(2, results[1].list.id);
+    }
+
     fn item_list(
         id: u64,
         name: String,
@@ -853,9 +874,9 @@ mod tests {
     }
 
     fn item_lists() -> Vec<ItemList> {
-        let d1 = NaiveDate::from_ymd_opt(2024, 7, 19).unwrap().and_hms_opt(0,0,0).unwrap();
-        let d2 = NaiveDate::from_ymd_opt(2024, 7, 20).unwrap().and_hms_opt(0,0,0).unwrap();
-        let d3 = NaiveDate::from_ymd_opt(2024, 7, 21).unwrap().and_hms_opt(0,0,0).unwrap();
+        let d1 = NaiveDate::from_ymd_opt(2024, 7, 19).unwrap().and_hms_opt(0, 0, 0).unwrap();
+        let d2 = NaiveDate::from_ymd_opt(2024, 7, 20).unwrap().and_hms_opt(0, 0, 0).unwrap();
+        let d3 = NaiveDate::from_ymd_opt(2024, 7, 21).unwrap().and_hms_opt(0, 0, 0).unwrap();
 
         vec![
             item_list(
@@ -910,6 +931,7 @@ mod tests {
             limit_show_not_deleted: true,
             limit_in_folders: vec![],
             limit_name_keywords: None,
+            limit_list_ids: vec![],
         }
     }
 
