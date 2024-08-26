@@ -10,8 +10,7 @@ RUN apt-get update -y \
     && apt-get -y install sqlite3 libsqlite3-dev \
     && apt-get autoremove -y \
     && apt-get clean -y \
-    && rm -rf /var/lib/apt/lists/*
-RUN apt-get update && apt-get -y install sqlite3 libsqlite3-dev && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
 COPY --from=builder /app/target/release/list-management list-management
 COPY --from=builder /app/.env .env
 ENV SERVER_HOST 0.0.0.0
