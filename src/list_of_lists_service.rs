@@ -243,7 +243,7 @@ mod tests {
     use rust_decimal::Decimal;
 
     use crate::common::*;
-    use crate::common::tests::{context, state, user, users};
+    use crate::common::tests::context;
 
     use super::*;
 
@@ -937,5 +937,26 @@ mod tests {
 
     fn sort(key: SortKey, descending: bool) -> SortRequest {
         SortRequest { descending, key }
+    }
+
+    fn state() -> UserState {
+        UserState {
+            active_user_accounts: user().user_accounts,
+            user_id: user().id,
+        }
+    }
+
+    fn user() -> User {
+        User {
+            id: 1,
+            name: "One Name".to_string(),
+            source: "user-source".to_string(),
+            source_id: "ONE-ID".to_string(),
+            user_accounts: vec![],
+        }
+    }
+
+    fn users() -> Vec<User> {
+        vec![user()]
     }
 }

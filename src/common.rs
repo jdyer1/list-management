@@ -82,9 +82,6 @@ pub struct ListItem {
     pub source: String,
 }
 
-#[derive(Clone, Debug)]
-pub struct ListManagementError();
-
 pub trait ListStorage {
     fn all_lists(&self) -> Vec<ItemList>;
 
@@ -283,26 +280,5 @@ pub(crate) mod tests {
             }
             None
         }
-    }
-
-    pub fn state() -> UserState {
-        UserState {
-            active_user_accounts: user().user_accounts,
-            user_id: user().id,
-        }
-    }
-
-    pub fn user() -> User {
-        User {
-            id: 1,
-            name: "One Name".to_string(),
-            source: "user-source".to_string(),
-            source_id: "ONE-ID".to_string(),
-            user_accounts: vec![],
-        }
-    }
-
-    pub fn users() -> Vec<User> {
-        vec![user()]
     }
 }
