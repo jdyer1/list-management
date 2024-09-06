@@ -9,13 +9,12 @@ use rust_decimal::Decimal;
 use tracing::dispatcher::set_global_default;
 use tracing_log::LogTracer;
 
-use crate::common::{ListAttribute, Price, User, UserStorage};
+use crate::common::{ListAttribute, Price, User};
 use crate::db;
 use crate::db::{connection, MultiConnection};
 use crate::helpers::tracing_subscriber;
 use crate::models::{AccountDb, AccountTypeDb, ItemListDb, ItemListDbInsert, ListItemDb, ListItemDbInsert};
 use crate::schema::{account, account_type, item_list, item_list_account, item_list_attribute, list_item, list_item_attribute, user, user_account};
-use crate::user_storage::DatabaseUserStorage;
 
 pub fn setup_logging() {
     match LogTracer::init() {
@@ -30,7 +29,7 @@ pub fn setup_logging() {
     }
 }
 
-fn cleanup_db(c: &mut PooledConnection<ConnectionManager<MultiConnection>>) {
+pub(crate) fn cleanup_db(c: &mut PooledConnection<ConnectionManager<MultiConnection>>) {
     diesel::delete(list_item_attribute::table)
         .execute(c)
         .unwrap();
@@ -345,15 +344,14 @@ fn insert_item_list_account(
 }
 
 pub fn insert_user(name: &str, source: &str, source_id: &str) -> i32 {
-    DatabaseUserStorage()
-        .create_or_update_user(User {
-            id: 0,
+         crate::user_storage::create_or_update_user(User {
+            id: None,
             name: name.to_string(),
             source: source.to_string(),
             source_id: source_id.to_string(),
             user_accounts: vec![],
         })
-        .id as i32
+        .id.unwrap() as i32
 }
 
 pub fn insert_item_list(

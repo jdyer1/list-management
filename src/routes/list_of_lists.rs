@@ -1,10 +1,8 @@
 
 use actix_web::{HttpRequest, HttpResponse};
 
-use crate::common::{ListStorage, LMContext, PagingRequest, SortKey, SortRequest, User, UserState, UserStorage};
+use crate::common::{LMContext, PagingRequest, SortKey, SortRequest, User, UserState};
 use crate::list_of_lists_service::{ListSelector, retrieve_lists};
-use crate::list_storage::DatabaseListStorage;
-use crate::user_storage::DatabaseUserStorage;
 
 pub async fn list_of_lists(req: HttpRequest) -> HttpResponse {
     let user_id: u64 = req.headers().get("user_id").unwrap()
@@ -45,17 +43,9 @@ struct Context {
 }
 
 impl LMContext for Context {
-    fn list_storage(self) -> impl ListStorage {
-        DatabaseListStorage()
-    }
-
-    fn user_storage(self) -> impl UserStorage {
-        DatabaseUserStorage()
-    }
-
-    fn current_user(self) -> (User, Self) {
+   fn current_user(self) -> (User, Self) {
         let (state, self1) = self.current_user_state();
-        let u = DatabaseUserStorage().retrieve_user_by_id(&state.user_id).unwrap().1;
+        let u = crate::user_storage::retrieve_user_by_id(&state.user_id).unwrap();
         (u, self1)
     }
 

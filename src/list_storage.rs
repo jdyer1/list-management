@@ -8,7 +8,7 @@ use regex::Regex;
 use rust_decimal::Decimal;
 
 use crate::common::{
-    Account, AccountType, ItemList, ListAccess, ListAttribute, ListItem, ListStorage, ListType,
+    Account, AccountType, ItemList, ListAccess, ListAttribute, ListItem, ListType,
     Price, UserState,
 };
 use crate::db;
@@ -21,38 +21,35 @@ use crate::schema::{
 };
 use crate::schema::item_list::owner_user_id;
 
-pub struct DatabaseListStorage();
-
-impl ListStorage for DatabaseListStorage {
-    fn user_lists(&self, user_state: UserState) -> Vec<ItemList> {
-        let mut lists: Vec<ItemListDb> = Vec::new();
-        {
-            let mut c = db::connection();
-            let mut l: Vec<ItemListDb> = item_list::table
-                .filter(owner_user_id.eq(user_state.user_id as i32))
-                .select(ItemListDb::as_select())
-                .order(item_list::id.asc())
-                .load(&mut c)
-                .unwrap();
-            lists.append(&mut l);
-        }
-        get_lists(lists)
+pub(crate) fn user_lists(user_state: UserState) -> Vec<ItemList> {
+    let mut lists: Vec<ItemListDb> = Vec::new();
+    {
+        let mut c = db::connection();
+        let mut l: Vec<ItemListDb> = item_list::table
+            .filter(owner_user_id.eq(user_state.user_id as i32))
+            .select(ItemListDb::as_select())
+            .order(item_list::id.asc())
+            .load(&mut c)
+            .unwrap();
+        lists.append(&mut l);
     }
-
-    fn all_lists(&self) -> Vec<ItemList> {
-        let mut lists: Vec<ItemListDb> = Vec::new();
-        {
-            let mut c = db::connection();
-            let mut l: Vec<ItemListDb> = item_list::table
-                .select(ItemListDb::as_select())
-                .order(item_list::id.asc())
-                .load(&mut c)
-                .unwrap();
-            lists.append(&mut l);
-        }
-        get_lists(lists)
-    }
+    get_lists(lists)
 }
+
+pub(crate) fn all_lists() -> Vec<ItemList> {
+    let mut lists: Vec<ItemListDb> = Vec::new();
+    {
+        let mut c = db::connection();
+        let mut l: Vec<ItemListDb> = item_list::table
+            .select(ItemListDb::as_select())
+            .order(item_list::id.asc())
+            .load(&mut c)
+            .unwrap();
+        lists.append(&mut l);
+    }
+    get_lists(lists)
+}
+
 
 fn get_lists(lists: Vec<ItemListDb>) -> Vec<ItemList> {
     let account_types_by_id: HashMap<i32, AccountType> = all_account_types();
@@ -74,11 +71,11 @@ fn get_lists(lists: Vec<ItemListDb>) -> Vec<ItemList> {
                 vec_of_iladb_adb
                     .into_iter()
                     .map(|(_, adb)| Account {
-                        id: adb.id as u64,
+                        id: Some(adb.id as u64),
                         account_type: account_types_by_id
                             .get(&adb.account_type_id)
                             .unwrap_or(&AccountType {
-                                id: adb.account_type_id as u64,
+                                id: Some(adb.account_type_id as u64),
                                 name: "".to_string(),
                                 source: "".to_string(),
                             })
@@ -181,7 +178,7 @@ fn get_lists(lists: Vec<ItemListDb>) -> Vec<ItemList> {
 
             let il_id: i32 = ildb.0.id;
             ItemList {
-                id: il_id as u64,
+                id: Some(il_id as u64),
                 attributes: list_attr_map.to_owned(),
                 created: NaiveDateTime::from(ildb.0.created),
                 deleted: ildb.0.deleted,
@@ -189,21 +186,22 @@ fn get_lists(lists: Vec<ItemListDb>) -> Vec<ItemList> {
                 items: ildb
                     .1
                     .iter()
-                    .map(|lidb| -> ListItem {
+                    .map(|lidb| -> Option<ListItem> {
                         let item_list_attr_map_opt: Option<&HashMap<String, ListAttribute>> =
                             list_item_attribute_map.get(&lidb.id);
                         let item_attr_map = match item_list_attr_map_opt {
                             None => &HashMap::with_capacity(0),
                             Some(_) => item_list_attr_map_opt.unwrap(),
                         };
-                        ListItem {
-                            id: lidb.id as u64,
+                        let li = ListItem {
+                            id: Some(lidb.id as u64),
                             attributes: item_attr_map.to_owned(),
                             created: NaiveDateTime::from(lidb.created),
                             modified: NaiveDateTime::from(lidb.modified),
                             name: lidb.name.clone(),
                             source: lidb.source.clone(),
-                        }
+                        };
+                        Some(li)
                     })
                     .collect(),
                 list_access: ListAccess::from_str(&ildb.0.access).unwrap_or(ListAccess::Public),
@@ -212,6 +210,7 @@ fn get_lists(lists: Vec<ItemListDb>) -> Vec<ItemList> {
                 modified: NaiveDateTime::from(ildb.0.modified),
                 name: ildb.0.name.clone(),
                 read_only: false,
+                rollups: None,
             }
         })
         .collect()
@@ -224,7 +223,7 @@ impl Display for Price {
 }
 
 fn to_price(str: String) -> Price {
-    let re = Regex::new(r"^PRICE[:]\s_([^\s]+)\s_([^s]+)$").unwrap();
+    let re = Regex::new(r"^PRICE[:]\s_([^\s]+)\s_([^\s]+)$").unwrap();
     let Some(caps) = re.captures(&str) else {
         return Price {
             amount: Decimal::from_str("0.00").unwrap(),
@@ -239,7 +238,7 @@ fn to_price(str: String) -> Price {
     }
 }
 
-fn all_account_types() -> HashMap<i32, AccountType> {
+pub(crate) fn all_account_types() -> HashMap<i32, AccountType> {
     let mut c = db::connection();
     let mut m: HashMap<i32, AccountType> = HashMap::new();
     let v = account_type::table
@@ -249,7 +248,7 @@ fn all_account_types() -> HashMap<i32, AccountType> {
     for atdb in v {
         let id = atdb.id;
         let at = AccountType {
-            id: id as u64,
+            id: Some(id as u64),
             name: atdb.name,
             source: atdb.source,
         };
@@ -274,7 +273,7 @@ pub mod tests {
     #[serial]
     fn test_all_lists() {
         setup();
-        let a: Vec<ItemList> = DatabaseListStorage().all_lists();
+        let a: Vec<ItemList> = all_lists();
         assert_eq!(2, a.len());
         assert_eq!("Item List One", a[0].name);
         assert_eq!(1, a[0].attributes.len());
@@ -285,12 +284,15 @@ pub mod tests {
             panic!("Should be a String, was {}", foo_val);
         }
         assert_eq!(2, a[0].list_accounts.len());
+        assert!(a[0].items.is_some());
+        let a0i = &a[0].items.as_ref().unwrap();
+        let a1i = &a[1].items.as_ref().unwrap();
 
-        assert_eq!(2, a[0].items.len());
-        assert_eq!("IL1-1", a[0].items[0].name);
-        assert_eq!("IL1-2", a[0].items[1].name);
-        assert_eq!(1, a[0].items[0].attributes.len());
-        assert_eq!(1, a[0].items[1].attributes.len());
+        assert_eq!(2, a0i.len());
+        assert_eq!("IL1-1", a0i[0].name);
+        assert_eq!("IL1-2", a0i[1].name);
+        assert_eq!(1, a0i[0].attributes.len());
+        assert_eq!(1, a0i[1].attributes.len());
 
         assert_eq!("Item List Two", a[1].name);
         assert_eq!(2, a[0].list_accounts.len());
@@ -307,11 +309,11 @@ pub mod tests {
             a[0].list_accounts[0].account_source_id
         );
 
-        assert_eq!(2, a[1].items.len());
-        assert_eq!("IL2-1", a[1].items[0].name);
-        assert_eq!("IL2-2", a[1].items[1].name);
-        assert_eq!(1, a[1].items[0].attributes.len());
-        assert_eq!(1, a[1].items[0].attributes.len());
+        assert_eq!(2, a1i.len());
+        assert_eq!("IL2-1", a1i[0].name);
+        assert_eq!("IL2-2", a1i[1].name);
+        assert_eq!(1, a1i[0].attributes.len());
+        assert_eq!(1, a1i[0].attributes.len());
     }
 
     #[test]
@@ -331,7 +333,7 @@ pub mod tests {
             active_user_accounts: vec![],
             user_id: user_ids.0 as u64,
         };
-        let v = DatabaseListStorage().user_lists(us);
+        let v = user_lists(us);
         assert_eq!(1, v.len());
         assert_eq!("Item List One", v[0].name);
 
@@ -339,7 +341,7 @@ pub mod tests {
             active_user_accounts: vec![],
             user_id: user_ids.1 as u64,
         };
-        let v1 = DatabaseListStorage().user_lists(us1);
+        let v1 = user_lists(us1);
         assert_eq!(1, v1.len());
         assert_eq!("Item List Two", v1[0].name);
 
@@ -347,7 +349,7 @@ pub mod tests {
             active_user_accounts: vec![],
             user_id: (user_ids.0 + user_ids.1) as u64,
         };
-        let v2 = DatabaseListStorage().user_lists(us2);
+        let v2 = user_lists(us2);
         assert_eq!(0, v2.len());
     }
 
@@ -358,5 +360,4 @@ pub mod tests {
         let user_id_2 = insert_user("name", "source", "source-2");
         setup_lists(vec![a1_id, a2_id], vec![a1_id], user_id_1, user_id_2);
     }
-
 }

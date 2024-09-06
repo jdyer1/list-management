@@ -1,135 +1,157 @@
-use crate::common::{LMContext, User, UserStorage};
+use crate::common::{LMContext, User};
+
+pub fn create_user(user: User) -> User {
+    crate::user_storage::create_or_update_user(user)
+}
 
 pub fn retrieve_user(context: impl LMContext, source: &str, source_id: &str) -> Option<User> {
-    context.user_storage().retrieve_user(source, source_id)
+    crate::user_storage::retrieve_user(source, source_id)
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::common::tests::context;
+    use diesel::{RunQueryDsl, sql_query};
+    use serial_test::serial;
+
     use crate::common::*;
+    use crate::common::tests::context;
+    use crate::db;
 
     use super::*;
 
     #[test]
+    #[serial]
     fn test_retrieve_user() {
-        let u5 = retrieve_user(us_context(), "source", "source-id-5").unwrap();
-        assert_eq!(5, u5.id);
+        {
+            let mut c = db::connection();
+            let _ = sql_query(r#"
+        insert into account_type (id, name, source) values (1000, 'AT1', 'AT1 SOURCE')
+            "#).execute(&mut c);
+            let _ = sql_query(r#"
+        insert into account_type (id, name, source) values (1001, 'AT2', 'AT2 SOURCE')
+            "#).execute(&mut c);
+            let _ = sql_query(r#"
+        insert into account (id, account_type_id, account_source_id) values (100, 1000, 'AT1-ZERO')
+            "#).execute(&mut c);
+            let _ = sql_query(r#"
+        insert into account (id, account_type_id, account_source_id) values (101, 1001, 'AT2-ONE')
+            "#).execute(&mut c);
+            let _ = sql_query(r#"
+        insert into account (id, account_type_id, account_source_id) values (102, 1000, 'AT1-TWO')
+            "#).execute(&mut c);
+            let _ = sql_query(r#"
+        insert into USER (id, name, source, source_id) values (5, 'User Five', 'source', 'source-id-5')
+            "#).execute(&mut c);
+            let _ = sql_query(r#"
+        insert into USER (id, name, source, source_id) values (6, 'User Six', 'source', 'source-id-6')
+            "#).execute(&mut c);
+            let _ = sql_query(r#"
+        insert into USER_ACCOUNT (user_id, account_id) values (5, 100)
+            "#).execute(&mut c);
+            let _ = sql_query(r#"
+        insert into USER_ACCOUNT (user_id, account_id) values (5, 101)
+            "#).execute(&mut c);
+            let _ = sql_query(r#"
+        insert into USER_ACCOUNT (user_id, account_id) values (5, 102)
+            "#).execute(&mut c);
+            let _ = sql_query(r#"
+        insert into USER_ACCOUNT (user_id, account_id) values (6, 100)
+            "#).execute(&mut c);
+            let _ = sql_query(r#"
+        insert into USER_ACCOUNT (user_id, account_id) values (6, 102)
+            "#).execute(&mut c);
+        }
+
+        let u5 = retrieve_user(us_context(User {
+            id: Some(5),
+            name: "".to_string(),
+            source: "".to_string(),
+            source_id: "".to_string(),
+            user_accounts: vec![],
+        }), "source", "source-id-5").unwrap();
+        assert_eq!(5, u5.id.unwrap());
         assert_eq!("User Five", u5.name);
         assert_eq!(3, u5.user_accounts.len());
         assert_eq!(
-            "AT1-FIVE-SIX".to_string(),
+            "AT1-ZERO".to_string(),
             u5.user_accounts[0].account_source_id
         );
-        assert_eq!("AT1A".to_string(), u5.user_accounts[1].account_type.name);
+        assert_eq!("AT2".to_string(), u5.user_accounts[1].account_type.name);
         assert_eq!(
-            "AT2 SOURCE".to_string(),
+            "AT1 SOURCE".to_string(),
             u5.user_accounts[2].account_type.source
         );
 
-        let u6 = retrieve_user(us_context(), "source", "source-id-6").unwrap();
-        assert_eq!(6, u6.id);
+        let u6 = retrieve_user(us_context(User {
+            id: Some(6),
+            name: "".to_string(),
+            source: "".to_string(),
+            source_id: "".to_string(),
+            user_accounts: vec![],
+        }), "source", "source-id-6").unwrap();
+        assert_eq!(6, u6.id.unwrap());
         assert_eq!("User Six", u6.name);
-        assert_eq!(3, u6.user_accounts.len());
+        assert_eq!(2, u6.user_accounts.len());
         assert_eq!(
-            "AT1-FIVE-SIX".to_string(),
+            "AT1-ZERO".to_string(),
             u6.user_accounts[0].account_source_id
         );
         assert_eq!(
-            "AT1A-FIVE-SIX".to_string(),
+            "AT1-TWO".to_string(),
             u6.user_accounts[1].account_source_id
         );
-        assert_eq!("AT2-SIX".to_string(), u6.user_accounts[2].account_source_id);
     }
 
-    fn us_context() -> impl LMContext {
-        let all_users = users();
-        let current_user = all_users[0].clone();
-        let user_state = user_state(current_user.id.clone(), current_user.user_accounts.clone());
-        context(vec![], all_users, current_user, user_state)
-    }
-
-    fn user(
-        id: u64,
-        name: String,
-        source: String,
-        source_id: String,
-        user_accounts: Vec<Account>,
-    ) -> User {
-        User {
-            id,
-            name,
-            source,
-            source_id,
-            user_accounts,
+    #[test]
+    #[serial]
+    fn test_create_user() {
+        {
+            let mut c = db::connection();
+            let _ = sql_query(r#"
+        insert into account_type (id, name, source) values (1000, 'AT1', 'AT1 SOURCE')
+            "#).execute(&mut c);
+            let _ = sql_query(r#"
+        insert into account (id, account_type_id, account_source_id) values (100, 1000, 'AT1-ZERO')
+            "#).execute(&mut c);
         }
+        let u1 = User {
+            id: None,
+            name: "My Name".to_string(),
+            source: "My Source".to_string(),
+            source_id: "My Id".to_string(),
+            user_accounts: vec![Account {
+                id: Some(100),
+                account_type: AccountType {
+                    id: None,
+                    name: "".to_string(),
+                    source: "".to_string(),
+                },
+                account_source_id: "".to_string(),
+            }],
+        };
+        let u1 = create_user(u1);
+        assert!(u1.id.is_some());
+        assert_eq!("My Name", u1.name);
+        assert_eq!("My Source", u1.source);
+        assert_eq!("My Id", u1.source_id);
+        assert_eq!(1, u1.user_accounts.len());
+        assert_eq!("AT1-ZERO", u1.user_accounts[0].account_source_id);
+        assert_eq!("AT1", u1.user_accounts[0].account_type.name);
+        assert_eq!("AT1 SOURCE", u1.user_accounts[0].account_type.source);
+
     }
 
-    fn users() -> Vec<User> {
-        let u5_accounts = vec![
-            user_account(55, at1(), "AT1-FIVE-SIX".to_string()),
-            user_account(56, at1a(), "AT1A-FIVE-SIX".to_string()),
-            user_account(57, at2(), "AT2-FIVE".to_string()),
-        ];
-        let u6_accounts = vec![
-            user_account(65, at1(), "AT1-FIVE-SIX".to_string()),
-            user_account(66, at1a(), "AT1A-FIVE-SIX".to_string()),
-            user_account(67, at2(), "AT2-SIX".to_string()),
-        ];
-        vec![
-            user(
-                5,
-                "User Five".to_string(),
-                "source".to_string(),
-                "source-id-5".to_string(),
-                u5_accounts,
-            ),
-            user(
-                6,
-                "User Six".to_string(),
-                "source".to_string(),
-                "source-id-6".to_string(),
-                u6_accounts,
-            ),
-        ]
+
+    fn us_context(user: User) -> impl LMContext {
+        let current_user = user;
+        let user_state = user_state(current_user.id.unwrap().clone(), current_user.user_accounts.clone());
+        context(current_user, user_state)
     }
 
     fn user_state(id: u64, active_accounts: Vec<Account>) -> UserState {
         UserState {
             user_id: id,
             active_user_accounts: active_accounts,
-        }
-    }
-
-    fn user_account(id: u64, account_type: AccountType, source_id: String) -> Account {
-        Account {
-            id,
-            account_type,
-            account_source_id: source_id,
-        }
-    }
-
-    fn at1() -> AccountType {
-        AccountType {
-            id: 100,
-            name: String::from("AT1"),
-            source: String::from("AT1 SOURCE"),
-        }
-    }
-
-    fn at1a() -> AccountType {
-        AccountType {
-            id: 101,
-            name: String::from("AT1A".to_string()),
-            source: String::from("AT1 SOURCE"),
-        }
-    }
-
-    fn at2() -> AccountType {
-        AccountType {
-            id: 102,
-            name: String::from("AT2"),
-            source: String::from("AT2 SOURCE"),
         }
     }
 }

@@ -2,8 +2,8 @@ use actix_web::{App, test};
 use actix_web::http::StatusCode;
 use tracing_actix_web::TracingLogger;
 
+use list_management::common::ItemList;
 use list_management::common::ListAccess;
-use list_management::list_of_lists_service::ListResult;
 use list_management::route_config;
 use list_management::test_helpers::{insert_account, insert_account_type, insert_user, setup_db, setup_lists, setup_logging};
 
@@ -23,11 +23,11 @@ async fn test_list_of_lists() {
         .to_request();
     let service_response = test::call_service(&app, req).await;
     assert_eq!(service_response.status(), StatusCode::OK);
-    let lr: Vec<ListResult> = test::read_body_json(service_response).await;
+    let lr: Vec<ItemList> = test::read_body_json(service_response).await;
     assert_eq!(2, lr.len());
-    assert_eq!("Item List One", lr[0].list.name);
-    assert_eq!("Item List Two", lr[1].list.name);
-    assert_eq!(ListAccess::Public, lr[0].list.list_access);
+    assert_eq!("Item List One", lr[0].name);
+    assert_eq!("Item List Two", lr[1].name);
+    assert_eq!(ListAccess::Public, lr[0].list_access);
 }
 
 fn setup() -> i32 {
