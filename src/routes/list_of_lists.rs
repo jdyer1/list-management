@@ -33,7 +33,7 @@ pub async fn list_of_lists(req: HttpRequest) -> HttpResponse {
         key: SortKey::Id,
     };
 
-    let a = ListOfListsService().retrieve_lists(context, selector, paging, sort, true, true);
+    let a = context.list_provider().retrieve_lists(&context, selector, paging, sort, true, true);
 
     HttpResponse::Ok().body(serde_json::to_string(&a).unwrap())
 }

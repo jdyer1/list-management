@@ -5,6 +5,7 @@ use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use strum_macros::{Display, EnumString};
 use thiserror::Error;
+use crate::list_of_lists_service::{ListOfListsService, ListProvider};
 
 pub static ATTRIBUTE_QUANTITY: &str = "quantity";
 
@@ -104,6 +105,10 @@ pub enum ListType {
 pub trait LMContext {
     fn current_user(&self) -> User;
     fn current_user_state(&self) -> UserState;
+
+    fn list_provider(&self) -> impl ListProvider {
+        ListOfListsService()
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -169,9 +174,9 @@ pub(crate) mod tests {
         }
     }
 
-    struct LMC {
-        current_user: User,
-        current_user_state: UserState,
+    pub struct LMC {
+        pub current_user: User,
+        pub current_user_state: UserState,
     }
 
     impl LMContext for LMC {
