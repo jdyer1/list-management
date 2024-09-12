@@ -4,6 +4,7 @@ use chrono::{NaiveDateTime};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use strum_macros::{Display, EnumString};
+use thiserror::Error;
 
 pub static ATTRIBUTE_QUANTITY: &str = "quantity";
 
@@ -81,6 +82,15 @@ pub struct ListItem {
     pub modified: NaiveDateTime,
     pub name: String,
     pub source: String,
+}
+
+#[derive(Error, Debug)]
+pub enum ListManagementError {
+    #[error("database error")]
+    Database(#[from] diesel::result::Error),
+
+    #[error("other error")]
+    Other,
 }
 
 #[derive(Clone, Debug, EnumString, PartialEq)]

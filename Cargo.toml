@@ -13,7 +13,7 @@ name = "list-management"
 [dependencies]
 actix-web = "4.9.0"
 chrono = { version = "0.4.38", features = ["serde"] }
-diesel = { version = "2.2.2", features = ["chrono", "time", "r2d2", "sqlite"] }
+diesel = { version = "2.2.2", features = ["chrono", "time", "r2d2", "sqlite", "returning_clauses_for_sqlite_3_35"] }
 diesel_migrations = "2.2.0"
 dotenvy = "0.15"
 lazy_static = "1.5.0"
@@ -24,6 +24,7 @@ strum = "0.26.3"
 strum_macros = "0.26.4"
 serde = { version = "1.0.204", features = ["derive"] }
 serde_json = "1.0.125"
+thiserror = "1.0.63"
 tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.18", features = ["registry", "env-filter"] }
 tracing-bunyan-formatter = "0.3.9"
