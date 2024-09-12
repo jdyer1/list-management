@@ -102,8 +102,8 @@ pub enum ListType {
 }
 
 pub trait LMContext {
-    fn current_user(self) -> (User, Self);
-    fn current_user_state(self) -> (UserState, Self);
+    fn current_user(&self) -> User;
+    fn current_user_state(&self) -> UserState;
 }
 
 #[derive(Clone, Debug)]
@@ -175,12 +175,12 @@ pub(crate) mod tests {
     }
 
     impl LMContext for LMC {
-        fn current_user(self) -> (User, Self) {
-            (self.current_user.clone(), self)
+        fn current_user(&self) -> User {
+            self.current_user.clone()
         }
 
-        fn current_user_state(self) -> (UserState, Self) {
-            (self.current_user_state.clone(), self)
+        fn current_user_state(&self) -> UserState {
+            self.current_user_state.clone()
         }
     }
 }

@@ -2,7 +2,7 @@
 use actix_web::{HttpRequest, HttpResponse};
 
 use crate::common::{LMContext, PagingRequest, SortKey, SortRequest, User, UserState};
-use crate::list_of_lists_service::{ListSelector, retrieve_lists};
+use crate::list_of_lists_service::{ListSelector, ListOfListsService, ListProvider};
 
 pub async fn list_of_lists(req: HttpRequest) -> HttpResponse {
     let user_id: u64 = req.headers().get("user_id").unwrap()
@@ -33,7 +33,7 @@ pub async fn list_of_lists(req: HttpRequest) -> HttpResponse {
         key: SortKey::Id,
     };
 
-    let a = retrieve_lists(context, selector, paging, sort, true, true);
+    let a = ListOfListsService().retrieve_lists(context, selector, paging, sort, true, true);
 
     HttpResponse::Ok().body(serde_json::to_string(&a).unwrap())
 }
@@ -43,13 +43,12 @@ struct Context {
 }
 
 impl LMContext for Context {
-   fn current_user(self) -> (User, Self) {
-        let (state, self1) = self.current_user_state();
-        let u = crate::user_storage::retrieve_user_by_id(&state.user_id).unwrap();
-        (u, self1)
+   fn current_user(&self) -> User {
+        let state = self.current_user_state();
+        crate::user_storage::retrieve_user_by_id(&state.user_id).unwrap()
     }
 
-    fn current_user_state(self) -> (UserState, Self) {
-        (self.user_state.clone(), self)
+    fn current_user_state(&self) -> UserState {
+        self.user_state.clone()
     }
 }

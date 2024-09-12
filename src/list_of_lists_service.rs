@@ -7,6 +7,18 @@ use tracing::info;
 use crate::common::{ATTRIBUTE_QUANTITY, ItemList, ItemListRollup, ListAccess, ListAttribute, ListItem, ListType, LMContext, PagingRequest, Price, SortKey, SortRequest};
 use crate::common::ListAttribute::DateTime;
 
+pub trait ListProvider {
+    fn retrieve_lists(
+       &self,
+        context: impl LMContext,
+        selector: ListSelector,
+        paging: PagingRequest,
+        sort: SortRequest,
+        return_attributes: bool,
+        return_rollups: bool,
+    ) -> Vec<ItemList>;
+}
+
 #[derive(Debug)]
 pub struct ListSelector {
     pub limit_show_read_only: bool,
@@ -19,93 +31,98 @@ pub struct ListSelector {
     pub limit_list_ids: Vec<u64>,
 }
 
-pub fn retrieve_lists(
-    context: impl LMContext,
-    selector: ListSelector,
-    paging: PagingRequest,
-    sort: SortRequest,
-    return_attributes: bool,
-    return_rollups: bool,
-) -> Vec<ItemList> {
-    let (user_state, _context) = context.current_user_state();
-    let a = crate::list_storage::user_lists(user_state);
-    let start = paging.start as usize;
-    let mut end = (paging.start + paging.rows) as usize;
-    if end > a.len() {
-        end = a.len();
-    }
+pub struct ListOfListsService();
 
-    if paging.rows == 0 || paging.start >= a.len() as u64 {
-        return vec![];
-    }
-    let a = sort_list_of_lists(a, sort);
-    let mut i: usize = 0;
-    let mut a1: Vec<ItemList> = Vec::new();
-    for mut item_list in a {
-        let mut include: bool = i >= start;
-        include = include && (selector.limit_show_not_deleted || item_list.deleted);
-        include = include && (selector.limit_show_deleted || !item_list.deleted);
-        include = include && (selector.limit_show_read_only || !item_list.read_only);
-        include = include
-            && (selector.limit_list_access.is_empty()
-            || selector.limit_list_access.contains(&item_list.list_access));
-        include = include
-            && (selector.limit_list_types.is_empty()
-            || selector.limit_list_types.contains(&item_list.list_type));
-        include = include
-            && (selector.limit_in_folders.is_empty()
-            || selector.limit_in_folders.contains(&item_list.folder));
-        include = include
-            && (selector.limit_list_ids.is_empty()
-            || (item_list.id.is_some() && selector.limit_list_ids.contains(&item_list.id.unwrap())));
-        if include && selector.limit_name_keywords.is_some() {
-            let name_tokens: Vec<String> = item_list
-                .name
-                .split_whitespace()
-                .map(|a| a.to_ascii_lowercase())
-                .collect();
-            for kw in selector
-                .limit_name_keywords
-                .as_ref()
-                .unwrap()
-                .split_whitespace()
-                .map(|a| a.to_ascii_lowercase())
-            {
-                let mut found: bool = false;
-                if kw.len() > 1 && kw.ends_with("*") {
-                    let mut kw_no_star = kw;
-                    kw_no_star.pop();
-                    for name_token in &name_tokens {
-                        if name_token.starts_with(&kw_no_star) {
-                            found = true;
-                            break;
+impl ListProvider for ListOfListsService {
+    fn retrieve_lists(
+        &self,
+        context: impl LMContext,
+        selector: ListSelector,
+        paging: PagingRequest,
+        sort: SortRequest,
+        return_attributes: bool,
+        return_rollups: bool,
+    ) -> Vec<ItemList> {
+        let user_state = context.current_user_state();
+        let a = crate::list_storage::user_lists(user_state);
+        let start = paging.start as usize;
+        let mut end = (paging.start + paging.rows) as usize;
+        if end > a.len() {
+            end = a.len();
+        }
+
+        if paging.rows == 0 || paging.start >= a.len() as u64 {
+            return vec![];
+        }
+        let a = sort_list_of_lists(a, sort);
+        let mut i: usize = 0;
+        let mut a1: Vec<ItemList> = Vec::new();
+        for mut item_list in a {
+            let mut include: bool = i >= start;
+            include = include && (selector.limit_show_not_deleted || item_list.deleted);
+            include = include && (selector.limit_show_deleted || !item_list.deleted);
+            include = include && (selector.limit_show_read_only || !item_list.read_only);
+            include = include
+                && (selector.limit_list_access.is_empty()
+                || selector.limit_list_access.contains(&item_list.list_access));
+            include = include
+                && (selector.limit_list_types.is_empty()
+                || selector.limit_list_types.contains(&item_list.list_type));
+            include = include
+                && (selector.limit_in_folders.is_empty()
+                || selector.limit_in_folders.contains(&item_list.folder));
+            include = include
+                && (selector.limit_list_ids.is_empty()
+                || (item_list.id.is_some() && selector.limit_list_ids.contains(&item_list.id.unwrap())));
+            if include && selector.limit_name_keywords.is_some() {
+                let name_tokens: Vec<String> = item_list
+                    .name
+                    .split_whitespace()
+                    .map(|a| a.to_ascii_lowercase())
+                    .collect();
+                for kw in selector
+                    .limit_name_keywords
+                    .as_ref()
+                    .unwrap()
+                    .split_whitespace()
+                    .map(|a| a.to_ascii_lowercase())
+                {
+                    let mut found: bool = false;
+                    if kw.len() > 1 && kw.ends_with("*") {
+                        let mut kw_no_star = kw;
+                        kw_no_star.pop();
+                        for name_token in &name_tokens {
+                            if name_token.starts_with(&kw_no_star) {
+                                found = true;
+                                break;
+                            }
                         }
+                    } else {
+                        found = name_tokens.contains(&kw);
                     }
-                } else {
-                    found = name_tokens.contains(&kw);
-                }
-                if !found {
-                    include = false;
-                    break;
+                    if !found {
+                        include = false;
+                        break;
+                    }
                 }
             }
-        }
 
-        if include {
-            if !return_attributes {
-                item_list.attributes = HashMap::with_capacity(0);
+            if include {
+                if !return_attributes {
+                    item_list.attributes = HashMap::with_capacity(0);
+                }
+                let il_i = &item_list.items.as_ref().unwrap();
+                item_list.rollups = compute_rollup_values(return_rollups, &il_i);
+                a1.push(item_list);
             }
-            let il_i = &item_list.items.as_ref().unwrap();
-            item_list.rollups = compute_rollup_values(return_rollups, &il_i);
-            a1.push(item_list);
+            i += 1;
+            if i == end {
+                break;
+            }
         }
-        i += 1;
-        if i == end {
-            break;
-        }
+        info!("Returning {} list results for {:?} with {:?}", a1.len(), selector, paging);
+        a1
     }
-    info!("Returning {} list results for {:?} with {:?}", a1.len(), selector, paging);
-    a1
 }
 
 fn sort_list_of_lists(mut a: Vec<ItemList>, sort: SortRequest) -> Vec<ItemList> {
@@ -258,7 +275,7 @@ mod tests {
     fn test_retrieve_all_lists_by_id() {
         setup(false, false);
         let sort_request = sort(SortKey::Id, false);
-        let results = retrieve_lists(
+        let results = ListOfListsService().retrieve_lists(
             context(user(), state()),
             selector(),
             paging(0, 10),
@@ -286,7 +303,7 @@ mod tests {
     fn test_retrieve_all_lists_by_id_with_attributes_and_rollups() {
         setup(true, true);
         let sort_request = sort(SortKey::Id, false);
-        let results = retrieve_lists(
+        let results = ListOfListsService().retrieve_lists(
             context(user(), state()),
             selector(),
             paging(0, 10),
@@ -340,7 +357,7 @@ mod tests {
     fn test_retrieve_all_lists_by_name() {
         setup(false, false);
         let sort_request = sort(SortKey::Name, false);
-        let results = retrieve_lists(
+        let results = ListOfListsService().retrieve_lists(
             context(user(), state()),
             selector(),
             paging(0, 10),
@@ -359,7 +376,7 @@ mod tests {
     fn test_retrieve_all_lists_by_id_descending() {
         setup(false, false);
         let sort_request = sort(SortKey::Id, true);
-        let results = retrieve_lists(
+        let results = ListOfListsService().retrieve_lists(
             context(user(), state()),
             selector(),
             paging(0, 10),
@@ -378,7 +395,7 @@ mod tests {
     fn test_retrieve_all_lists_by_name_descending() {
         setup(false, false);
         let sort_request = sort(SortKey::Name, true);
-        let results = retrieve_lists(
+        let results = ListOfListsService().retrieve_lists(
             context(user(), state()),
             selector(),
             paging(0, 10),
@@ -397,7 +414,7 @@ mod tests {
     fn test_retrieve_all_lists_by_create_date() {
         setup(false, false);
         let sort_request = sort(SortKey::CreatedDate, false);
-        let results = retrieve_lists(
+        let results = ListOfListsService().retrieve_lists(
             context(user(), state()),
             selector(),
             paging(0, 10),
@@ -416,7 +433,7 @@ mod tests {
     fn test_retrieve_all_lists_by_modified_date_descending() {
         setup(false, false);
         let sort_request = sort(SortKey::ModifiedDate, true);
-        let results = retrieve_lists(
+        let results = ListOfListsService().retrieve_lists(
             context(user(), state()),
             selector(),
             paging(0, 10),
@@ -435,7 +452,7 @@ mod tests {
     fn test_retrieve_all_lists_by_nonexistent_attribute_descending() {
         setup(false, false);
         let sort_request = sort(SortKey::Attribute("does not exist".to_string()), false);
-        let results = retrieve_lists(
+        let results = ListOfListsService().retrieve_lists(
             context(user(), state()),
             selector(),
             paging(0, 10),
@@ -454,7 +471,7 @@ mod tests {
     fn test_retrieve_all_lists_by_boolean_attribute_descending() {
         setup(false, true);
         let sort_request = sort(SortKey::Attribute("my boolean".to_string()), true);
-        let results = retrieve_lists(
+        let results = ListOfListsService().retrieve_lists(
             context(user(), state()),
             selector(),
             paging(0, 10),
@@ -473,7 +490,7 @@ mod tests {
     fn test_retrieve_all_lists_by_float_attribute() {
         setup(false, true);
         let sort_request = sort(SortKey::Attribute("my float".to_string()), false);
-        let results = retrieve_lists(
+        let results = ListOfListsService().retrieve_lists(
             context(user(), state()),
             selector(),
             paging(0, 10),
@@ -492,7 +509,7 @@ mod tests {
     fn test_retrieve_all_lists_by_integer_attribute() {
         setup(false, false);
         let sort_request = sort(SortKey::Attribute("my integer".to_string()), false);
-        let results = retrieve_lists(
+        let results = ListOfListsService().retrieve_lists(
             context(user(), state()),
             selector(),
             paging(0, 10),
@@ -511,7 +528,7 @@ mod tests {
     fn test_retrieve_all_lists_by_price_attribute() {
         setup(false, true);
         let sort_request = sort(SortKey::Attribute("my price".to_string()), false);
-        let results = retrieve_lists(
+        let results = ListOfListsService().retrieve_lists(
             context(user(), state()),
             selector(),
             paging(0, 10),
@@ -530,7 +547,7 @@ mod tests {
     fn test_retrieve_all_lists_by_text_attribute() {
         setup(false, true);
         let sort_request = sort(SortKey::Attribute("my text".to_string()), false);
-        let results = retrieve_lists(
+        let results = ListOfListsService().retrieve_lists(
             context(user(), state()),
             selector(),
             paging(0, 10),
@@ -549,7 +566,7 @@ mod tests {
     fn test_retrieve_all_lists_by_date_attribute() {
         setup(false, true);
         let sort_request = sort(SortKey::Attribute("my date".to_string()), false);
-        let results = retrieve_lists(
+        let results = ListOfListsService().retrieve_lists(
             context(user(), state()),
             selector(),
             paging(0, 10),
@@ -567,7 +584,7 @@ mod tests {
     #[serial]
     fn test_retrieve_all_lists_with_paging() {
         setup(false, false);
-        let results = retrieve_lists(
+        let results = ListOfListsService().retrieve_lists(
             context(user(), state()),
             selector(),
             paging(1, 1),
@@ -583,7 +600,7 @@ mod tests {
     #[serial]
     fn test_retrieve_all_lists_with_paging_beyond_end() {
         setup(false, false);
-        let results = retrieve_lists(
+        let results = ListOfListsService().retrieve_lists(
             context(user(), state()),
             selector(),
             paging(3, 10),
@@ -598,7 +615,7 @@ mod tests {
     #[serial]
     fn test_retrieve_all_lists_with_no_rows_requested() {
         setup(false, false);
-        let results = retrieve_lists(
+        let results = ListOfListsService().retrieve_lists(
             context(user(), state()),
             selector(),
             paging(0, 0),
@@ -615,7 +632,7 @@ mod tests {
         setup(false, false);
         let mut selector = selector();
         selector.limit_show_deleted = false;
-        let results = retrieve_lists(
+        let results = ListOfListsService().retrieve_lists(
             context(user(), state()),
             selector,
             paging(0, 10),
@@ -634,7 +651,7 @@ mod tests {
         setup(false, false);
         let mut selector = selector();
         selector.limit_show_not_deleted = false;
-        let results = retrieve_lists(
+        let results = ListOfListsService().retrieve_lists(
             context(user(), state()),
             selector,
             paging(0, 10),
@@ -652,7 +669,7 @@ mod tests {
         setup(false, false);
         let mut selector = selector();
         selector.limit_show_read_only = false;
-        let results = retrieve_lists(
+        let results = ListOfListsService().retrieve_lists(
             context(user(), state()),
             selector,
             paging(0, 10),
@@ -673,7 +690,7 @@ mod tests {
         setup(false, false);
         let mut selector = selector();
         selector.limit_in_folders = vec!["archive".to_string()];
-        let results = retrieve_lists(
+        let results = ListOfListsService().retrieve_lists(
             context(user(), state()),
             selector,
             paging(0, 10),
@@ -691,7 +708,7 @@ mod tests {
         setup(false, false);
         let mut selector = selector();
         selector.limit_list_access = vec![ListAccess::Private];
-        let results = retrieve_lists(
+        let results = ListOfListsService().retrieve_lists(
             context(user(), state()),
             selector,
             paging(0, 10),
@@ -709,7 +726,7 @@ mod tests {
         setup(false, false);
         let mut selector = selector();
         selector.limit_list_access = vec![ListAccess::Public, ListAccess::Shared];
-        let results = retrieve_lists(
+        let results = ListOfListsService().retrieve_lists(
             context(user(), state()),
             selector,
             paging(0, 10),
@@ -728,7 +745,7 @@ mod tests {
         setup(false, false);
         let mut selector = selector();
         selector.limit_list_types = vec![ListType::Transient];
-        let results = retrieve_lists(
+        let results = ListOfListsService().retrieve_lists(
             context(user(), state()),
             selector,
             paging(0, 10),
@@ -746,7 +763,7 @@ mod tests {
         setup(false, false);
         let mut selector = selector();
         selector.limit_list_types = vec![ListType::Standard, ListType::System];
-        let results = retrieve_lists(
+        let results = ListOfListsService().retrieve_lists(
             context(user(), state()),
             selector,
             paging(0, 10),
@@ -765,7 +782,7 @@ mod tests {
         setup(false, false);
         let mut selector = selector();
         selector.limit_name_keywords = Some("name".to_string());
-        let results = retrieve_lists(
+        let results = ListOfListsService().retrieve_lists(
             context(user(), state()),
             selector,
             paging(0, 10),
@@ -784,7 +801,7 @@ mod tests {
         setup(false, false);
         let mut selector = selector();
         selector.limit_name_keywords = Some("nam*".to_string());
-        let results = retrieve_lists(
+        let results = ListOfListsService().retrieve_lists(
             context(user(), state()),
             selector,
             paging(0, 10),
@@ -804,7 +821,7 @@ mod tests {
         setup(false, false);
         let mut selector = selector();
         selector.limit_name_keywords = Some("Nam* c2".to_string());
-        let results = retrieve_lists(
+        let results = ListOfListsService().retrieve_lists(
             context(user(), state()),
             selector,
             paging(0, 10),
@@ -822,7 +839,7 @@ mod tests {
         setup(false, false);
         let mut selector = selector();
         selector.limit_list_ids = vec![1, 2];
-        let results = retrieve_lists(
+        let results = ListOfListsService().retrieve_lists(
             context(user(), state()),
             selector,
             paging(0, 10),
