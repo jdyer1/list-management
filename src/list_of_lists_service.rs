@@ -9,7 +9,7 @@ use crate::common::ListAttribute::DateTime;
 
 pub trait ListProvider {
     fn retrieve_lists(
-        &self,
+        &mut self,
         context: &impl LMContext,
         selector: ListSelector,
         paging: PagingRequest,
@@ -19,7 +19,7 @@ pub trait ListProvider {
     ) -> Vec<ItemList>;
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct ListSelector {
     pub limit_show_read_only: bool,
     pub limit_list_types: Vec<ListType>,
@@ -35,7 +35,7 @@ pub struct ListOfListsService();
 
 impl ListProvider for ListOfListsService {
     fn retrieve_lists(
-        &self,
+        &mut self,
         context: &impl LMContext,
         selector: ListSelector,
         paging: PagingRequest,
@@ -264,7 +264,7 @@ mod tests {
     use serial_test::serial;
 
     use crate::common::*;
-    use crate::common::tests::{context, LMC};
+    use crate::common::tests::{context, user, state};
     use crate::db;
     use crate::test_helpers::MIGRATIONS;
 
@@ -871,23 +871,6 @@ mod tests {
 
     fn sort(key: SortKey, descending: bool) -> SortRequest {
         SortRequest { descending, key }
-    }
-
-    fn state() -> UserState {
-        UserState {
-            active_user_accounts: user().user_accounts,
-            user_id: user().id.unwrap(),
-        }
-    }
-
-    fn user() -> User {
-        User {
-            id: Some(1),
-            name: "One Name".to_string(),
-            source: "user-source".to_string(),
-            source_id: "ONE-ID".to_string(),
-            user_accounts: vec![],
-        }
     }
 
     fn users() -> Vec<User> {

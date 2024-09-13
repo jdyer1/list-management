@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 
-use chrono::{NaiveDateTime};
+use chrono::NaiveDateTime;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use strum_macros::{Display, EnumString};
 use thiserror::Error;
+
 use crate::list_of_lists_service::{ListOfListsService, ListProvider};
 
 pub static ATTRIBUTE_QUANTITY: &str = "quantity";
@@ -90,6 +91,9 @@ pub enum ListManagementError {
     #[error("database error")]
     Database(#[from] diesel::result::Error),
 
+    #[error("Not Found: {0}")]
+    NotFound(String),
+
     #[error("other error")]
     Other,
 }
@@ -105,7 +109,6 @@ pub enum ListType {
 pub trait LMContext {
     fn current_user(&self) -> User;
     fn current_user_state(&self) -> UserState;
-
     fn list_provider(&self) -> impl ListProvider {
         ListOfListsService()
     }
@@ -162,7 +165,8 @@ pub struct UserState {
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use crate::common::{ItemList, LMContext, User, UserState};
+    use crate::common::{ItemList, LMContext, PagingRequest, SortRequest, User, UserState};
+    use crate::list_of_lists_service::{ListProvider, ListSelector};
 
     pub fn context(
         user: User,
@@ -171,12 +175,27 @@ pub(crate) mod tests {
         LMC {
             current_user: user,
             current_user_state: state,
+            list_provider: mock_list_provider(vec![]),
+        }
+    }
+
+    pub fn context_with_lists(
+        user: User,
+        state: UserState,
+        lists: Vec<ItemList>,
+
+    ) -> impl LMContext {
+        LMC {
+            current_user: user,
+            current_user_state: state,
+            list_provider: mock_list_provider(lists),
         }
     }
 
     pub struct LMC {
         pub current_user: User,
         pub current_user_state: UserState,
+        pub list_provider: MockListProvider,
     }
 
     impl LMContext for LMC {
@@ -187,5 +206,68 @@ pub(crate) mod tests {
         fn current_user_state(&self) -> UserState {
             self.current_user_state.clone()
         }
+
+        fn list_provider(&self) -> impl ListProvider {
+            self.list_provider.clone()
+        }
+    }
+
+    pub fn state() -> UserState {
+        UserState {
+            active_user_accounts: user().user_accounts,
+            user_id: user().id.unwrap(),
+        }
+    }
+
+    pub fn user() -> User {
+        User {
+            id: Some(1),
+            name: "One Name".to_string(),
+            source: "user-source".to_string(),
+            source_id: "ONE-ID".to_string(),
+            user_accounts: vec![],
+        }
+    }
+
+    #[derive(Clone)]
+    pub struct MockListProvider {
+        last_selector: Option<ListSelector>,
+        last_paging: Option<PagingRequest>,
+        last_sort: Option<SortRequest>,
+        last_return_attributes: Option<bool>,
+        last_return_rollups: Option<bool>,
+        //
+        lists: Vec<ItemList>,
+    }
+
+    impl ListProvider for MockListProvider {
+        fn retrieve_lists(&mut self,
+                          _context: &impl LMContext,
+                          selector: ListSelector,
+                          paging: PagingRequest,
+                          sort: SortRequest,
+                          return_attributes: bool,
+                          return_rollups: bool) -> Vec<ItemList> {
+            self.last_selector = Some(selector);
+            self.last_paging = Some(paging);
+            self.last_sort = Some(sort);
+            self.last_return_attributes = Some(return_attributes);
+            self.last_return_rollups = Some(return_rollups);
+
+            self.lists.clone()
+        }
+    }
+
+    pub fn mock_list_provider(lists: Vec<ItemList>) -> MockListProvider {
+        MockListProvider {
+            last_selector: None,
+            last_paging: None,
+            last_sort: None,
+            last_return_attributes: None,
+            last_return_rollups: None,
+            lists,
+        }
     }
 }
+
+

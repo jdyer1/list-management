@@ -5,6 +5,7 @@ mod routes;
 mod db;
 pub mod helpers;
 pub mod list_of_lists_service;
+pub mod list_service;
 mod list_storage;
 mod models;
 mod schema;

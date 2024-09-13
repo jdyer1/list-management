@@ -4,7 +4,7 @@ pub fn create_user(user: User) -> User {
     crate::user_storage::create_or_update_user(user)
 }
 
-pub fn retrieve_user(context: impl LMContext, source: &str, source_id: &str) -> Option<User> {
+pub fn retrieve_user(_context: impl LMContext, source: &str, source_id: &str) -> Option<User> {
     crate::user_storage::retrieve_user(source, source_id)
 }
 

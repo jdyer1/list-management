@@ -2,7 +2,7 @@
 use actix_web::{HttpRequest, HttpResponse};
 
 use crate::common::{LMContext, PagingRequest, SortKey, SortRequest, User, UserState};
-use crate::list_of_lists_service::{ListSelector, ListOfListsService, ListProvider};
+use crate::list_of_lists_service::{ListSelector, ListProvider};
 
 pub async fn list_of_lists(req: HttpRequest) -> HttpResponse {
     let user_id: u64 = req.headers().get("user_id").unwrap()
